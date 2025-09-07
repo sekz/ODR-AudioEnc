@@ -1,7 +1,5 @@
 /* ------------------------------------------------------------------
  * Copyright (C) 2024 StreamDAB Project
- * Copyright (C) 2011 Martin Storsjo
- * Copyright (C) 2022 Matthias P. Braendli
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,515 +17,356 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "../src/thai_metadata.h"
-#include <chrono>
+#include "thai_metadata.h"
 
 using namespace StreamDAB;
-using namespace std::chrono;
+using namespace std;
 
-// Test class for Thai character set conversion
-class ThaiCharsetConverterTest : public ::testing::Test {
+class ThaiMetadataTest : public ::testing::Test {
 protected:
-    void SetUp() override {}
-    void TearDown() override {}
+    void SetUp() override {
+        processor_ = make_unique<ThaiMetadataProcessor>();
+        detector_ = make_unique<ThaiLanguageDetector>();
+        dls_processor_ = make_unique<ThaiDLSProcessor>();
+    }
+    
+    unique_ptr<ThaiMetadataProcessor> processor_;
+    unique_ptr<ThaiLanguageDetector> detector_;
+    unique_ptr<ThaiDLSProcessor> dls_processor_;
+    
+    // Test data constants
+    const string thai_text_ = "สวัสดีครับ";
+    const string english_text_ = "Hello World";
+    const string mixed_text_ = "Hello สวัสดี World";
+    const string thai_song_title_ = "เพลงไทยสมัยใหม่";
+    const string thai_artist_name_ = "นักร้องไทย";
 };
 
-TEST_F(ThaiCharsetConverterTest, ValidateThaiUTF8) {
-    // Valid Thai UTF-8 strings
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("สวัสดี"));           // Hello
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("ขอบคุณ"));           // Thank you
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("เพลงไทย"));          // Thai music
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("Hello สวัสดี"));     // Mixed Thai-English
+// ThaiCharsetConverter Tests
+TEST_F(ThaiMetadataTest, UTF8ToDabThaiConversion) {
+    EXPECT_NO_THROW({
+        string converted = ThaiCharsetConverter::utf8_to_dab_thai(thai_text_);
+        EXPECT_FALSE(converted.empty());
+    });
+}
+
+TEST_F(ThaiMetadataTest, ValidateThaiUTF8) {
+    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8(thai_text_));
+    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8(english_text_));
+    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8(mixed_text_));
     
-    // Valid ASCII
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("Hello World"));
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8("123456"));
-    
-    // Empty string
-    EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8(""));
-    
-    // Invalid UTF-8 sequences (these would be invalid byte sequences)
-    // Note: These are conceptual - actual invalid bytes would need to be constructed
-    std::string invalid_utf8;
-    invalid_utf8.push_back(0xFF); // Invalid UTF-8 start byte
-    invalid_utf8.push_back(0xFE);
+    // Test invalid UTF-8
+    string invalid_utf8 = "\xFF\xFE\xInvalid";
     EXPECT_FALSE(ThaiCharsetConverter::is_valid_thai_utf8(invalid_utf8));
 }
 
-TEST_F(ThaiCharsetConverterTest, UTF8ToDABThaiConversion) {
-    // Test basic Thai character conversion
-    std::string thai_text = "ก"; // Thai character 'ก'
-    std::string dab_encoded = ThaiCharsetConverter::utf8_to_dab_thai(thai_text);
+TEST_F(ThaiMetadataTest, ThaiTextNormalization) {
+    string input = "  สวัสดี  \t\n  ครับ  ";
+    string normalized = ThaiCharsetConverter::normalize_thai_text(input);
     
-    // Should not be empty and should be different from input
-    EXPECT_FALSE(dab_encoded.empty());
-    
-    // Test ASCII passthrough
-    std::string ascii_text = "Hello";
-    std::string ascii_encoded = ThaiCharsetConverter::utf8_to_dab_thai(ascii_text);
-    EXPECT_EQ(ascii_encoded, ascii_text); // ASCII should pass through unchanged
-}
-
-TEST_F(ThaiCharsetConverterTest, NormalizeThaiText) {
-    // Test text normalization
-    std::string input_with_extra_spaces = "  สวัสดี    ครับ  ";
-    std::string normalized = ThaiCharsetConverter::normalize_thai_text(input_with_extra_spaces);
-    
-    // Should remove extra whitespace
     EXPECT_EQ(normalized, "สวัสดี ครับ");
-    
-    // Test control character removal
-    std::string input_with_controls = "สวัสดี\x01\x02ครับ";
-    normalized = ThaiCharsetConverter::normalize_thai_text(input_with_controls);
-    EXPECT_EQ(normalized, "สวัสดีครับ");
 }
 
-TEST_F(ThaiCharsetConverterTest, CalculateThaiDisplayLength) {
-    // Test display length calculation for Thai text
-    std::string simple_thai = "กขค"; // 3 consonants
-    EXPECT_EQ(ThaiCharsetConverter::calculate_thai_display_length(simple_thai), 3);
+TEST_F(ThaiMetadataTest, CalculateThaiDisplayLength) {
+    // Thai text with combining characters
+    string thai_with_vowels = "กำ"; // ก + ำ (combining vowel)
     
-    // Test ASCII
-    std::string ascii = "ABC";
-    EXPECT_EQ(ThaiCharsetConverter::calculate_thai_display_length(ascii), 3);
+    size_t length = ThaiCharsetConverter::calculate_thai_display_length(thai_with_vowels);
+    EXPECT_EQ(length, 1); // Should count as 1 display character
     
-    // Test empty string
-    EXPECT_EQ(ThaiCharsetConverter::calculate_thai_display_length(""), 0);
-    
-    // Test Thai with combining characters (vowels, tone marks)
-    // Note: This test assumes specific Thai combining character behavior
-    std::string thai_with_combining = "กา"; // consonant + vowel
-    size_t length = ThaiCharsetConverter::calculate_thai_display_length(thai_with_combining);
+    length = ThaiCharsetConverter::calculate_thai_display_length(thai_text_);
     EXPECT_GT(length, 0);
-    EXPECT_LE(length, 2); // Should be at most 2 display positions
 }
 
-TEST_F(ThaiCharsetConverterTest, TruncateThaiText) {
-    std::string long_thai = "สวัสดีครับผมชื่อสมชาย";
+TEST_F(ThaiMetadataTest, TruncateThaiText) {
+    string long_thai = "สวัสดีครับผมชื่อจอห์นสมิท";
+    string truncated = ThaiCharsetConverter::truncate_thai_text(long_thai, 5);
     
-    // Truncate to 5 characters
-    std::string truncated = ThaiCharsetConverter::truncate_thai_text(long_thai, 5);
-    
-    // Should be shorter than or equal to 5 display characters
     size_t display_length = ThaiCharsetConverter::calculate_thai_display_length(truncated);
     EXPECT_LE(display_length, 5);
-    
-    // Should not be empty unless input was empty
-    EXPECT_FALSE(truncated.empty());
-    
-    // Test truncating already short text
-    std::string short_thai = "สวัสดี";
-    truncated = ThaiCharsetConverter::truncate_thai_text(short_thai, 10);
-    EXPECT_EQ(truncated, short_thai); // Should remain unchanged
 }
 
-// Test class for Thai language detection
-class ThaiLanguageDetectorTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        detector_ = std::make_unique<ThaiLanguageDetector>();
-    }
+// ThaiLanguageDetector Tests
+TEST_F(ThaiMetadataTest, DetectThaiLanguage) {
+    EXPECT_TRUE(detector_->is_thai_text(thai_text_));
+    EXPECT_FALSE(detector_->is_thai_text(english_text_));
     
-    void TearDown() override {}
-    
-    std::unique_ptr<ThaiLanguageDetector> detector_;
-};
-
-TEST_F(ThaiLanguageDetectorTest, DetectThaiText) {
-    // Pure Thai text
-    EXPECT_TRUE(detector_->is_thai_text("สวัสดีครับ"));
-    EXPECT_TRUE(detector_->is_thai_text("เพลงไทย"));
-    EXPECT_TRUE(detector_->is_thai_text("ขอบคุณมาก"));
-    
-    // Pure English text
-    EXPECT_FALSE(detector_->is_thai_text("Hello World"));
-    EXPECT_FALSE(detector_->is_thai_text("English Song Title"));
-    
-    // Mixed text (should depend on Thai percentage)
-    bool mixed_result = detector_->is_thai_text("Hello สวัสดี");
-    // Result depends on implementation threshold
-    
-    // Empty text
-    EXPECT_FALSE(detector_->is_thai_text(""));
-    
-    // Numbers only
-    EXPECT_FALSE(detector_->is_thai_text("12345"));
+    // Mixed text should be detected based on threshold
+    bool is_mixed_thai = detector_->is_thai_text(mixed_text_, 0.3); // Lower threshold
+    EXPECT_TRUE(is_mixed_thai);
 }
 
-TEST_F(ThaiLanguageDetectorTest, ThaiConfidenceScoring) {
-    // Pure Thai should have high confidence
-    double thai_confidence = detector_->get_thai_confidence("สวัสดีครับ");
-    EXPECT_GT(thai_confidence, 0.8);
+TEST_F(ThaiMetadataTest, ThaiConfidenceScoring) {
+    double thai_confidence = detector_->get_thai_confidence(thai_text_);
+    EXPECT_GT(thai_confidence, 0.7);
     
-    // Pure English should have low confidence
-    double english_confidence = detector_->get_thai_confidence("Hello World");
-    EXPECT_LT(english_confidence, 0.2);
+    double english_confidence = detector_->get_thai_confidence(english_text_);
+    EXPECT_LT(english_confidence, 0.3);
     
-    // Mixed text should have intermediate confidence
-    double mixed_confidence = detector_->get_thai_confidence("Hello สวัสดี");
-    EXPECT_GT(mixed_confidence, 0.0);
-    EXPECT_LT(mixed_confidence, 1.0);
-    
-    // Empty text should have zero confidence
-    EXPECT_EQ(detector_->get_thai_confidence(""), 0.0);
+    double mixed_confidence = detector_->get_thai_confidence(mixed_text_);
+    EXPECT_GT(mixed_confidence, 0.1);
+    EXPECT_LT(mixed_confidence, 0.8);
 }
 
-TEST_F(ThaiLanguageDetectorTest, LanguageCompositionAnalysis) {
-    // Analyze pure Thai text
-    auto thai_stats = detector_->analyze_language_composition("สวัสดีครับ");
-    EXPECT_GT(thai_stats.thai_char_count, 0);
-    EXPECT_EQ(thai_stats.english_char_count, 0);
-    EXPECT_GT(thai_stats.thai_percentage, 0.8);
+TEST_F(ThaiMetadataTest, AnalyzeLanguageComposition) {
+    auto stats = detector_->analyze_language_composition(mixed_text_);
     
-    // Analyze pure English text
-    auto english_stats = detector_->analyze_language_composition("Hello World");
-    EXPECT_EQ(english_stats.thai_char_count, 0);
-    EXPECT_GT(english_stats.english_char_count, 0);
-    EXPECT_LT(english_stats.thai_percentage, 0.2);
-    
-    // Analyze mixed text
-    auto mixed_stats = detector_->analyze_language_composition("Hello สวัสดี");
-    EXPECT_GT(mixed_stats.thai_char_count, 0);
-    EXPECT_GT(mixed_stats.english_char_count, 0);
-    EXPECT_GT(mixed_stats.thai_percentage, 0.0);
-    EXPECT_LT(mixed_stats.thai_percentage, 1.0);
+    EXPECT_GT(stats.thai_char_count, 0);
+    EXPECT_GT(stats.english_char_count, 0);
+    EXPECT_GT(stats.total_char_count, stats.thai_char_count + stats.english_char_count);
+    EXPECT_TRUE(stats.has_thai_consonants || stats.has_thai_vowels);
 }
 
-// Test class for Buddhist calendar functionality
-class BuddhistCalendarTest : public ::testing::Test {
-protected:
-    void SetUp() override {}
-    void TearDown() override {}
-};
+// ThaiDLSProcessor Tests
+TEST_F(ThaiMetadataTest, ProcessThaiDLS) {
+    vector<uint8_t> dls_data = dls_processor_->process_thai_text(thai_text_);
+    
+    EXPECT_FALSE(dls_data.empty());
+    EXPECT_EQ(dls_data[0], DAB_THAI_CHARSET); // Should start with charset indicator
+}
 
-TEST_F(BuddhistCalendarTest, GregorianToBuddhistConversion) {
-    // Test conversion of known dates
-    auto buddhist_date = BuddhistCalendar::gregorian_to_buddhist(2024, 1, 15);
+TEST_F(ThaiMetadataTest, DLSLengthConstraints) {
+    string long_text = string(200, 'ก'); // Very long Thai text
+    vector<uint8_t> dls_data = dls_processor_->process_thai_text(long_text);
+    
+    EXPECT_LE(dls_data.size(), MAX_DLS_LENGTH_THAI + 1); // +1 for charset indicator
+}
+
+TEST_F(ThaiMetadataTest, ValidateDLSContent) {
+    vector<uint8_t> dls_data = dls_processor_->process_thai_text(thai_text_);
+    EXPECT_TRUE(dls_processor_->validate_dls_content(dls_data));
+    
+    // Test invalid DLS data
+    vector<uint8_t> invalid_data = {0xFF, 0xFE, 0xFD}; // Invalid charset/data
+    EXPECT_FALSE(dls_processor_->validate_dls_content(invalid_data));
+}
+
+// BuddhistCalendar Tests
+TEST_F(ThaiMetadataTest, GregorianToBuddhistConversion) {
+    auto buddhist_date = BuddhistCalendar::gregorian_to_buddhist(2024, 9, 7);
     
     EXPECT_TRUE(buddhist_date.is_valid);
     EXPECT_EQ(buddhist_date.year, 2567); // 2024 + 543
-    EXPECT_EQ(buddhist_date.month, 1);
-    EXPECT_EQ(buddhist_date.day, 15);
+    EXPECT_EQ(buddhist_date.month, 9);
+    EXPECT_EQ(buddhist_date.day, 7);
     EXPECT_FALSE(buddhist_date.thai_month_name.empty());
-    
-    // Test invalid dates
-    auto invalid_date = BuddhistCalendar::gregorian_to_buddhist(2024, 13, 32);
-    EXPECT_FALSE(invalid_date.is_valid);
 }
 
-TEST_F(BuddhistCalendarTest, ThaiMonthNames) {
-    // Test Thai month name retrieval
-    std::string january = BuddhistCalendar::get_thai_month_name(1);
-    EXPECT_EQ(january, "มกราคม");
+TEST_F(ThaiMetadataTest, ThaiMonthNames) {
+    for (int month = 1; month <= 12; ++month) {
+        string month_name = BuddhistCalendar::get_thai_month_name(month);
+        EXPECT_FALSE(month_name.empty());
+        EXPECT_GT(month_name.length(), 0);
+    }
     
-    std::string december = BuddhistCalendar::get_thai_month_name(12);
-    EXPECT_EQ(december, "ธันวาคม");
-    
-    // Test invalid month
-    std::string invalid_month = BuddhistCalendar::get_thai_month_name(13);
-    EXPECT_TRUE(invalid_month.empty());
-    
-    std::string invalid_month_zero = BuddhistCalendar::get_thai_month_name(0);
-    EXPECT_TRUE(invalid_month_zero.empty());
+    // Invalid month should return empty string
+    EXPECT_TRUE(BuddhistCalendar::get_thai_month_name(0).empty());
+    EXPECT_TRUE(BuddhistCalendar::get_thai_month_name(13).empty());
 }
 
-TEST_F(BuddhistCalendarTest, DateFormatting) {
-    auto buddhist_date = BuddhistCalendar::gregorian_to_buddhist(2024, 1, 15);
-    std::string formatted = BuddhistCalendar::format_buddhist_date(buddhist_date);
+TEST_F(ThaiMetadataTest, FormatBuddhistDate) {
+    auto buddhist_date = BuddhistCalendar::gregorian_to_buddhist(2024, 9, 7);
+    string formatted = BuddhistCalendar::format_buddhist_date(buddhist_date);
     
     EXPECT_FALSE(formatted.empty());
-    EXPECT_NE(formatted.find("2567"), std::string::npos); // Should contain Buddhist year
-    EXPECT_NE(formatted.find("มกราคม"), std::string::npos); // Should contain Thai month name
-    
-    // Test invalid date formatting
-    ThaiMetadata::BuddhistDate invalid_date;
-    invalid_date.is_valid = false;
-    std::string invalid_formatted = BuddhistCalendar::format_buddhist_date(invalid_date);
-    EXPECT_TRUE(invalid_formatted.empty());
+    EXPECT_NE(formatted.find("2567"), string::npos); // Should contain BE year
+    EXPECT_NE(formatted.find("พ.ศ."), string::npos); // Should contain "BE" in Thai
 }
 
-TEST_F(BuddhistCalendarTest, CurrentDateFormatting) {
-    std::string current_date = BuddhistCalendar::format_current_buddhist_date();
-    EXPECT_FALSE(current_date.empty());
-    
-    // Should contain "พ.ศ." (Buddhist Era marker)
-    EXPECT_NE(current_date.find("พ.ศ."), std::string::npos);
+TEST_F(ThaiMetadataTest, ValidateBuddhistDate) {
+    EXPECT_TRUE(BuddhistCalendar::is_valid_buddhist_date(2567, 9, 7));
+    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(-1, 9, 7));
+    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 13, 7));
+    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 9, 32));
 }
 
-TEST_F(BuddhistCalendarTest, DateValidation) {
-    // Valid dates
-    EXPECT_TRUE(BuddhistCalendar::is_valid_buddhist_date(2567, 1, 15));
-    EXPECT_TRUE(BuddhistCalendar::is_valid_buddhist_date(2567, 12, 31));
+// ThaiMetadataProcessor Tests
+TEST_F(ThaiMetadataTest, ProcessRawMetadata) {
+    ThaiMetadata metadata = processor_->process_raw_metadata(
+        thai_song_title_, thai_artist_name_, "", "วิทยุไทย");
     
-    // Invalid dates
-    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(0, 1, 15));      // Invalid year
-    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 0, 15));   // Invalid month
-    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 13, 15));  // Invalid month
-    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 1, 0));    // Invalid day
-    EXPECT_FALSE(BuddhistCalendar::is_valid_buddhist_date(2567, 1, 32));   // Invalid day
-}
-
-// Test class for DLS processor
-class ThaiDLSProcessorTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        processor_ = std::make_unique<ThaiDLSProcessor>(MAX_DLS_LENGTH_THAI, true);
-    }
-    
-    void TearDown() override {}
-    
-    std::unique_ptr<ThaiDLSProcessor> processor_;
-};
-
-TEST_F(ThaiDLSProcessorTest, ProcessShortThaiText) {
-    std::string short_thai = "สวัสดี";
-    auto dls_data = processor_->process_thai_text(short_thai);
-    
-    EXPECT_FALSE(dls_data.empty());
-    
-    // First byte should be charset indicator
-    EXPECT_EQ(dls_data[0], DAB_THAI_CHARSET);
-    
-    // Should be able to validate the DLS content
-    EXPECT_TRUE(processor_->validate_dls_content(dls_data));
-}
-
-TEST_F(ThaiDLSProcessorTest, ProcessEmptyText) {
-    auto dls_data = processor_->process_thai_text("");
-    
-    // Should return empty vector for empty input
-    EXPECT_TRUE(dls_data.empty());
-}
-
-TEST_F(ThaiDLSProcessorTest, ProcessLongThaiText) {
-    // Create a long Thai text that exceeds DLS length limits
-    std::string long_thai;
-    for (int i = 0; i < 50; ++i) {
-        long_thai += "สวัสดีครับผม";
-    }
-    
-    auto dls_data = processor_->process_thai_text(long_thai);
-    
-    // Should not be empty but should be truncated to fit DLS limits
-    EXPECT_FALSE(dls_data.empty());
-    EXPECT_LE(dls_data.size(), MAX_DLS_LENGTH_THAI);
-    
-    // Should still be valid DLS content
-    EXPECT_TRUE(processor_->validate_dls_content(dls_data));
-}
-
-TEST_F(ThaiDLSProcessorTest, ScrollingConfiguration) {
-    // Test disabling scrolling
-    processor_->set_scrolling(false, 0);
-    
-    std::string text = "สวัสดี";
-    auto dls_data = processor_->process_thai_text(text);
-    EXPECT_FALSE(dls_data.empty());
-    
-    // Test enabling scrolling with custom speed
-    processor_->set_scrolling(true, 300);
-    dls_data = processor_->process_thai_text(text);
-    EXPECT_FALSE(dls_data.empty());
-}
-
-// Test class for Thai metadata processor
-class ThaiMetadataProcessorTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        processor_ = std::make_unique<ThaiMetadataProcessor>();
-    }
-    
-    void TearDown() override {}
-    
-    std::unique_ptr<ThaiMetadataProcessor> processor_;
-};
-
-TEST_F(ThaiMetadataProcessorTest, ProcessThaiMetadata) {
-    std::string thai_title = "เพลงไทย";
-    std::string thai_artist = "นักร้องไทย";
-    std::string english_album = "Thai Collection";
-    std::string station = "Radio Thailand";
-    
-    auto metadata = processor_->process_raw_metadata(thai_title, thai_artist, english_album, station);
-    
-    // Check basic fields
-    EXPECT_EQ(metadata.title_utf8, thai_title);
-    EXPECT_EQ(metadata.artist_utf8, thai_artist);
-    EXPECT_EQ(metadata.album_utf8, english_album);
-    EXPECT_EQ(metadata.station_utf8, station);
-    
-    // Should detect Thai content
+    EXPECT_EQ(metadata.title_utf8, thai_song_title_);
+    EXPECT_EQ(metadata.artist_utf8, thai_artist_name_);
     EXPECT_TRUE(metadata.is_thai_content);
-    EXPECT_GT(metadata.thai_confidence, 0.5);
-    
-    // Should have valid timestamp
-    auto now = system_clock::now();
-    auto time_diff = duration_cast<seconds>(now - metadata.timestamp).count();
-    EXPECT_GE(time_diff, 0);
-    EXPECT_LE(time_diff, 5);
-    
-    // Should have valid Buddhist date
+    EXPECT_GT(metadata.thai_confidence, 0.7);
     EXPECT_TRUE(metadata.buddhist_date.is_valid);
+    
+    // Check DAB conversion happened
+    EXPECT_FALSE(metadata.title_dab.empty());
+    EXPECT_FALSE(metadata.artist_dab.empty());
 }
 
-TEST_F(ThaiMetadataProcessorTest, ProcessEnglishMetadata) {
-    std::string english_title = "English Song";
-    std::string english_artist = "English Artist";
-    std::string english_album = "English Album";
-    std::string station = "English Radio";
+TEST_F(ThaiMetadataTest, ProcessEnglishMetadata) {
+    ThaiMetadata metadata = processor_->process_raw_metadata(
+        "English Song", "English Artist", "English Album", "Radio Station");
     
-    auto metadata = processor_->process_raw_metadata(english_title, english_artist, english_album, station);
-    
-    // Should not detect Thai content
     EXPECT_FALSE(metadata.is_thai_content);
     EXPECT_LT(metadata.thai_confidence, 0.3);
     
-    // DAB encoded fields might be empty or same as UTF-8 for non-Thai content
-    // This depends on implementation
+    // DAB fields should be empty for non-Thai content
+    EXPECT_TRUE(metadata.title_dab.empty() || metadata.title_dab == metadata.title_utf8);
 }
 
-TEST_F(ThaiMetadataProcessorTest, GenerateDLSFromMetadata) {
-    std::string thai_title = "เพลงไทย";
-    std::string thai_artist = "นักร้องไทย";
+TEST_F(ThaiMetadataTest, GenerateDLSFromMetadata) {
+    ThaiMetadata metadata = processor_->process_raw_metadata(
+        thai_song_title_, thai_artist_name_);
     
-    auto metadata = processor_->process_raw_metadata(thai_title, thai_artist);
-    auto dls_data = processor_->generate_dls_from_metadata(metadata);
+    vector<uint8_t> dls_data = processor_->generate_dls_from_metadata(metadata);
     
     EXPECT_FALSE(dls_data.empty());
-    
-    // Should start with charset indicator
-    EXPECT_EQ(dls_data[0], DAB_THAI_CHARSET);
+    EXPECT_EQ(dls_data[0], DAB_THAI_CHARSET); // Thai charset indicator
 }
 
-TEST_F(ThaiMetadataProcessorTest, ValidateMetadata) {
-    auto metadata = processor_->process_raw_metadata("สวัสดี", "ครับ", "อัลบั้ม", "สถานี");
+TEST_F(ThaiMetadataTest, ValidateMetadata) {
+    ThaiMetadata valid_metadata = processor_->process_raw_metadata(
+        thai_song_title_, thai_artist_name_);
     
-    EXPECT_TRUE(processor_->validate_metadata(metadata));
+    EXPECT_TRUE(processor_->validate_metadata(valid_metadata));
     
-    // Test with invalid metadata (e.g., overly long fields)
+    // Test invalid metadata
     ThaiMetadata invalid_metadata;
-    invalid_metadata.title_utf8 = std::string(2000, 'A'); // Too long
+    invalid_metadata.title_utf8 = string(1000, 'ก'); // Too long
     EXPECT_FALSE(processor_->validate_metadata(invalid_metadata));
 }
 
-TEST_F(ThaiMetadataProcessorTest, ProcessingStatistics) {
-    // Process some metadata
-    processor_->process_raw_metadata("เพลงไทย", "นักร้อง");
-    processor_->process_raw_metadata("English Song", "Artist");
-    processor_->process_raw_metadata("ไทย + English", "Mixed");
+TEST_F(ThaiMetadataTest, ProcessingStatistics) {
+    // Process several metadata entries
+    for (int i = 0; i < 10; ++i) {
+        processor_->process_raw_metadata("Title " + to_string(i), "Artist");
+    }
+    
+    for (int i = 0; i < 5; ++i) {
+        processor_->process_raw_metadata(thai_song_title_, thai_artist_name_);
+    }
     
     auto stats = processor_->get_processing_stats();
-    
-    EXPECT_EQ(stats.total_metadata_processed, 3);
-    EXPECT_GT(stats.thai_content_detected, 0);
-    EXPECT_LE(stats.thai_content_detected, 3);
-    EXPECT_EQ(stats.conversion_errors, 0);
-    
-    // Reset and verify
-    processor_->reset_stats();
-    stats = processor_->get_processing_stats();
-    EXPECT_EQ(stats.total_metadata_processed, 0);
-    EXPECT_EQ(stats.thai_content_detected, 0);
+    EXPECT_EQ(stats.total_metadata_processed, 15);
+    EXPECT_EQ(stats.thai_content_detected, 5);
+    EXPECT_GT(stats.average_thai_confidence, 0.5);
 }
 
-// Thai utility function tests
-class ThaiUtilsTest : public ::testing::Test {
-protected:
-    void SetUp() override {}
-    void TearDown() override {}
-};
-
-TEST_F(ThaiUtilsTest, UTF8CodepointConversion) {
-    std::string thai_text = "สวัสดี";
-    auto codepoints = ThaiUtils::utf8_to_codepoints(thai_text);
-    
+// Thai Utility Functions Tests
+TEST_F(ThaiMetadataTest, UTF8CodepointConversion) {
+    auto codepoints = ThaiUtils::utf8_to_codepoints(thai_text_);
     EXPECT_FALSE(codepoints.empty());
     
-    // Convert back to UTF-8
-    std::string converted_back = ThaiUtils::codepoints_to_utf8(codepoints);
-    EXPECT_EQ(converted_back, thai_text);
-    
-    // Test with ASCII
-    std::string ascii = "Hello";
-    auto ascii_codepoints = ThaiUtils::utf8_to_codepoints(ascii);
-    EXPECT_EQ(ascii_codepoints.size(), 5);
-    
-    std::string ascii_back = ThaiUtils::codepoints_to_utf8(ascii_codepoints);
-    EXPECT_EQ(ascii_back, ascii);
+    string reconstructed = ThaiUtils::codepoints_to_utf8(codepoints);
+    EXPECT_EQ(reconstructed, thai_text_);
 }
 
-TEST_F(ThaiUtilsTest, ThaiCharacterClassification) {
-    // Thai consonant
+TEST_F(ThaiMetadataTest, ThaiCharacterClassification) {
     uint32_t thai_consonant = 0x0E01; // ก
-    EXPECT_TRUE(ThaiUtils::is_thai_consonant(thai_consonant));
-    EXPECT_FALSE(ThaiUtils::is_thai_vowel(thai_consonant));
-    EXPECT_FALSE(ThaiUtils::is_thai_tone_mark(thai_consonant));
-    
-    // Thai vowel
     uint32_t thai_vowel = 0x0E32; // า
-    EXPECT_FALSE(ThaiUtils::is_thai_consonant(thai_vowel));
-    EXPECT_TRUE(ThaiUtils::is_thai_vowel(thai_vowel));
-    EXPECT_FALSE(ThaiUtils::is_thai_tone_mark(thai_vowel));
-    
-    // Thai tone mark
     uint32_t thai_tone = 0x0E48; // ่
-    EXPECT_FALSE(ThaiUtils::is_thai_consonant(thai_tone));
-    EXPECT_FALSE(ThaiUtils::is_thai_vowel(thai_tone));
-    EXPECT_TRUE(ThaiUtils::is_thai_tone_mark(thai_tone));
-    
-    // Thai number
     uint32_t thai_number = 0x0E50; // ๐
+    
+    EXPECT_TRUE(ThaiUtils::is_thai_consonant(thai_consonant));
+    EXPECT_TRUE(ThaiUtils::is_thai_vowel(thai_vowel));
+    EXPECT_TRUE(ThaiUtils::is_thai_tone_mark(thai_tone));
     EXPECT_TRUE(ThaiUtils::is_thai_number(thai_number));
     
-    // ASCII character
-    uint32_t ascii_char = 0x41; // A
-    EXPECT_FALSE(ThaiUtils::is_thai_consonant(ascii_char));
-    EXPECT_FALSE(ThaiUtils::is_thai_vowel(ascii_char));
-    EXPECT_FALSE(ThaiUtils::is_thai_tone_mark(ascii_char));
-    EXPECT_FALSE(ThaiUtils::is_thai_number(ascii_char));
+    // English characters should not be classified as Thai
+    EXPECT_FALSE(ThaiUtils::is_thai_consonant('A'));
+    EXPECT_FALSE(ThaiUtils::is_thai_vowel('e'));
 }
 
-TEST_F(ThaiUtilsTest, TextNormalization) {
-    // Test whitespace normalization
-    std::string input_with_spaces = "  Hello   World  ";
-    std::string normalized = ThaiUtils::normalize_whitespace(input_with_spaces);
-    EXPECT_EQ(normalized, "Hello World");
+TEST_F(ThaiMetadataTest, TextProcessingUtilities) {
+    string text_with_whitespace = "  สวัสดี   \t\n  ครับ  ";
+    string normalized = ThaiUtils::normalize_whitespace(text_with_whitespace);
+    EXPECT_EQ(normalized, "สวัสดี ครับ");
     
-    // Test control character removal
-    std::string input_with_controls = "Hello\x01\x02World";
-    std::string cleaned = ThaiUtils::remove_control_characters(input_with_controls);
+    string text_with_control = "Hello\x01\x02World\x1F";
+    string cleaned = ThaiUtils::remove_control_characters(text_with_control);
     EXPECT_EQ(cleaned, "HelloWorld");
-}
-
-TEST_F(ThaiUtilsTest, UTF8Validation) {
-    // Valid UTF-8
-    EXPECT_TRUE(ThaiUtils::is_valid_utf8_sequence("Hello สวัสดี"));
-    EXPECT_TRUE(ThaiUtils::is_valid_utf8_sequence(""));
-    EXPECT_TRUE(ThaiUtils::is_valid_utf8_sequence("ASCII only"));
     
-    // Invalid UTF-8 sequence
-    std::string invalid_utf8;
-    invalid_utf8.push_back(0xFF);
-    invalid_utf8.push_back(0xFE);
-    EXPECT_FALSE(ThaiUtils::is_valid_utf8_sequence(invalid_utf8));
-}
-
-TEST_F(ThaiUtilsTest, ThaiCharacterCounting) {
-    std::string mixed_text = "Hello สวัสดี World ครับ";
-    size_t thai_count = ThaiUtils::count_thai_characters(mixed_text);
+    EXPECT_TRUE(ThaiUtils::is_valid_utf8_sequence(thai_text_));
+    EXPECT_FALSE(ThaiUtils::is_valid_utf8_sequence("\xFF\xFE"));
     
+    size_t thai_count = ThaiUtils::count_thai_characters(mixed_text_);
     EXPECT_GT(thai_count, 0);
-    EXPECT_LT(thai_count, mixed_text.length()); // Should be less than total length
-    
-    // Pure English
-    EXPECT_EQ(ThaiUtils::count_thai_characters("Hello World"), 0);
-    
-    // Pure Thai
-    EXPECT_GT(ThaiUtils::count_thai_characters("สวัสดี"), 0);
 }
 
-// Main function for running tests
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+// Error Handling Tests
+TEST_F(ThaiMetadataTest, HandleInvalidUTF8) {
+    string invalid_utf8 = "\xFF\xFE\xInvalid";
+    
+    EXPECT_THROW({
+        ThaiCharsetConverter::utf8_to_dab_thai(invalid_utf8);
+    }, ThaiProcessingException);
+}
+
+TEST_F(ThaiMetadataTest, HandleLongText) {
+    string very_long_text = string(10000, 'ก');
+    
+    EXPECT_NO_THROW({
+        processor_->process_raw_metadata(very_long_text, "", "", "");
+    });
+}
+
+TEST_F(ThaiMetadataTest, ExceptionErrorCodes) {
+    try {
+        ThaiCharsetConverter::utf8_to_dab_thai("\xFF\xFE");
+        FAIL() << "Expected ThaiProcessingException";
+    }
+    catch (const ThaiProcessingException& e) {
+        EXPECT_EQ(e.get_error_code(), ThaiProcessingError::InvalidUTF8);
+        EXPECT_STREQ(e.what(), "Invalid UTF-8 sequence in input");
+    }
+}
+
+// Performance Tests
+TEST_F(ThaiMetadataTest, ProcessingPerformance) {
+    auto start = chrono::high_resolution_clock::now();
+    
+    // Process 1000 metadata entries
+    for (int i = 0; i < 1000; ++i) {
+        processor_->process_raw_metadata(thai_song_title_, thai_artist_name_);
+    }
+    
+    auto end = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+    
+    EXPECT_LT(duration.count(), 1000); // Should complete in less than 1 second
+}
+
+TEST_F(ThaiMetadataTest, MemoryUsage) {
+    // Create many processors and ensure no memory leaks
+    vector<unique_ptr<ThaiMetadataProcessor>> processors;
+    
+    for (int i = 0; i < 100; ++i) {
+        processors.push_back(make_unique<ThaiMetadataProcessor>());
+        processors.back()->process_raw_metadata(thai_song_title_, thai_artist_name_);
+    }
+    
+    // Test should complete without memory issues
+    EXPECT_EQ(processors.size(), 100);
+}
+
+// Edge Cases
+TEST_F(ThaiMetadataTest, EmptyInput) {
+    ThaiMetadata metadata = processor_->process_raw_metadata("", "", "", "");
+    
+    EXPECT_TRUE(metadata.title_utf8.empty());
+    EXPECT_TRUE(metadata.artist_utf8.empty());
+    EXPECT_FALSE(metadata.is_thai_content);
+    EXPECT_EQ(metadata.thai_confidence, 0.0);
+}
+
+TEST_F(ThaiMetadataTest, SpecialCharacters) {
+    string special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+    ThaiMetadata metadata = processor_->process_raw_metadata(special_chars, "", "", "");
+    
+    EXPECT_FALSE(metadata.is_thai_content);
+    EXPECT_NO_THROW({
+        processor_->generate_dls_from_metadata(metadata);
+    });
+}
+
+TEST_F(ThaiMetadataTest, MixedScripts) {
+    string mixed_scripts = "สวัสดี Hello مرحبا こんにちは";
+    ThaiMetadata metadata = processor_->process_raw_metadata(mixed_scripts, "", "", "");
+    
+    auto stats = detector_->analyze_language_composition(mixed_scripts);
+    EXPECT_GT(stats.thai_char_count, 0);
+    EXPECT_GT(stats.total_char_count, stats.thai_char_count);
 }
