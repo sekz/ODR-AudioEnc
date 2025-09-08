@@ -31,3 +31,6 @@ missing
 stamp-h1
 ar-lib
 odr-audioenc
+CMakeCache.txt
+CMakeFiles/
+build/
