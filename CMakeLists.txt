@@ -20,8 +20,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
 
+# Enable static linking for better compatibility (user suggestion)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Building tests: ${BUILD_TESTS}")
+message(STATUS "Static linking: Enabled for better compatibility")
 
 # Find required packages
 find_package(Threads REQUIRED)
