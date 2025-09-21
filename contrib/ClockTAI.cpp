@@ -90,6 +90,8 @@ static string join_string_with_pipe(const vector<string>& vec)
     return ss.str();
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 static vector<string> split_pipe_separated_string(const string& s)
 {
     stringstream ss;
@@ -102,6 +104,7 @@ static vector<string> split_pipe_separated_string(const string& s)
     }
     return components;
 }
+#pragma GCC diagnostic pop
 
 
 // read TAI offset from a valid bulletin in IETF format

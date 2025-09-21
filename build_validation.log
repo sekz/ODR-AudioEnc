@@ -1,0 +1,388 @@
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+  CXX      libAACdec/src/FDK_delay.o
+  CXX      libAACdec/src/aac_ram.o
+  CXX      libAACdec/src/aac_rom.o
+  CXX      libAACdec/src/aacdec_drc.o
+  CXX      libAACdec/src/aacdec_hcr.o
+  CXX      libAACdec/src/aacdec_hcr_bit.o
+  CXX      libAACdec/src/aacdec_hcrs.o
+  CXX      libAACdec/src/aacdec_pns.o
+  CXX      libAACdec/src/aacdec_tns.o
+  CXX      libAACdec/src/aacdecoder.o
+  CXX      libAACdec/src/aacdecoder_lib.o
+  CXX      libAACdec/src/block.o
+  CXX      libAACdec/src/channel.o
+  CXX      libAACdec/src/channelinfo.o
+  CXX      libAACdec/src/conceal.o
+  CXX      libAACdec/src/ldfiltbank.o
+  CXX      libAACdec/src/pulsedata.o
+  CXX      libAACdec/src/rvlc.o
+  CXX      libAACdec/src/rvlcbit.o
+  CXX      libAACdec/src/rvlcconceal.o
+  CXX      libAACdec/src/stereo.o
+  CXX      libAACdec/src/usacdec_ace_d4t64.o
+  CXX      libAACdec/src/usacdec_ace_ltp.o
+  CXX      libAACdec/src/usacdec_acelp.o
+  CXX      libAACdec/src/usacdec_fac.o
+  CXX      libAACdec/src/usacdec_lpc.o
+  CXX      libAACdec/src/usacdec_lpd.o
+  CXX      libAACdec/src/usacdec_rom.o
+  CXX      libAACenc/src/aacEnc_ram.o
+  CXX      libAACenc/src/aacEnc_rom.o
+  CXX      libAACenc/src/aacenc.o
+  CXX      libAACenc/src/aacenc_lib.o
+  CXX      libAACenc/src/aacenc_pns.o
+  CXX      libAACenc/src/aacenc_tns.o
+  CXX      libAACenc/src/adj_thr.o
+  CXX      libAACenc/src/band_nrg.o
+  CXX      libAACenc/src/bandwidth.o
+  CXX      libAACenc/src/bit_cnt.o
+  CXX      libAACenc/src/bitenc.o
+  CXX      libAACenc/src/block_switch.o
+  CXX      libAACenc/src/channel_map.o
+  CXX      libAACenc/src/chaosmeasure.o
+  CXX      libAACenc/src/dyn_bits.o
+  CXX      libAACenc/src/grp_data.o
+  CXX      libAACenc/src/intensity.o
+  CXX      libAACenc/src/line_pe.o
+  CXX      libAACenc/src/metadata_compressor.o
+  CXX      libAACenc/src/metadata_main.o
+  CXX      libAACenc/src/mps_main.o
+  CXX      libAACenc/src/ms_stereo.o
+  CXX      libAACenc/src/noisedet.o
+  CXX      libAACenc/src/pnsparam.o
+  CXX      libAACenc/src/pre_echo_control.o
+  CXX      libAACenc/src/psy_configuration.o
+  CXX      libAACenc/src/psy_main.o
+  CXX      libAACenc/src/qc_main.o
+  CXX      libAACenc/src/quantize.o
+  CXX      libAACenc/src/sf_estim.o
+  CXX      libAACenc/src/spreading.o
+  CXX      libAACenc/src/tonality.o
+  CXX      libAACenc/src/transform.o
+  CXX      libArithCoding/src/ac_arith_coder.o
+  CXX      libDRCdec/src/FDK_drcDecLib.o
+  CXX      libDRCdec/src/drcDec_gainDecoder.o
+  CXX      libDRCdec/src/drcDec_reader.o
+  CXX      libDRCdec/src/drcDec_rom.o
+  CXX      libDRCdec/src/drcDec_selectionProcess.o
+  CXX      libDRCdec/src/drcDec_tools.o
+  CXX      libDRCdec/src/drcGainDec_init.o
+  CXX      libDRCdec/src/drcGainDec_preprocess.o
+  CXX      libDRCdec/src/drcGainDec_process.o
+  CXX      libMpegTPDec/src/tpdec_adif.o
+  CXX      libMpegTPDec/src/tpdec_adts.o
+  CXX      libMpegTPDec/src/tpdec_asc.o
+  CXX      libMpegTPDec/src/tpdec_drm.o
+  CXX      libMpegTPDec/src/tpdec_latm.o
+  CXX      libMpegTPDec/src/tpdec_lib.o
+  CXX      libMpegTPEnc/src/tpenc_adif.o
+  CXX      libMpegTPEnc/src/tpenc_adts.o
+  CXX      libMpegTPEnc/src/tpenc_asc.o
+  CXX      libMpegTPEnc/src/tpenc_latm.o
+  CXX      libMpegTPEnc/src/tpenc_lib.o
+  CXX      libMpegTPEnc/src/tpenc_dab.o
+  CXX      libSACdec/src/sac_bitdec.o
+  CXX      libSACdec/src/sac_calcM1andM2.o
+  CXX      libSACdec/src/sac_dec.o
+  CXX      libSACdec/src/sac_dec_conceal.o
+  CXX      libSACdec/src/sac_dec_lib.o
+  CXX      libSACdec/src/sac_process.o
+  CXX      libSACdec/src/sac_qmf.o
+  CXX      libSACdec/src/sac_reshapeBBEnv.o
+  CXX      libSACdec/src/sac_rom.o
+  CXX      libSACdec/src/sac_smoothing.o
+  CXX      libSACdec/src/sac_stp.o
+  CXX      libSACdec/src/sac_tsd.o
+  CXX      libSACenc/src/sacenc_bitstream.o
+  CXX      libSACenc/src/sacenc_delay.o
+  CXX      libSACenc/src/sacenc_dmx_tdom_enh.o
+  CXX      libSACenc/src/sacenc_filter.o
+  CXX      libSACenc/src/sacenc_framewindowing.o
+  CXX      libSACenc/src/sacenc_huff_tab.o
+  CXX      libSACenc/src/sacenc_lib.o
+  CXX      libSACenc/src/sacenc_nlc_enc.o
+  CXX      libSACenc/src/sacenc_onsetdetect.o
+  CXX      libSACenc/src/sacenc_paramextract.o
+  CXX      libSACenc/src/sacenc_staticgain.o
+  CXX      libSACenc/src/sacenc_tree.o
+  CXX      libSACenc/src/sacenc_vectorfunctions.o
+  CXX      libSBRdec/src/HFgen_preFlat.o
+  CXX      libSBRdec/src/env_calc.o
+  CXX      libSBRdec/src/env_dec.o
+  CXX      libSBRdec/src/env_extr.o
+  CXX      libSBRdec/src/hbe.o
+  CXX      libSBRdec/src/huff_dec.o
+  CXX      libSBRdec/src/lpp_tran.o
+  CXX      libSBRdec/src/psbitdec.o
+  CXX      libSBRdec/src/psdec.o
+  CXX      libSBRdec/src/psdec_drm.o
+  CXX      libSBRdec/src/psdecrom_drm.o
+  CXX      libSBRdec/src/pvc_dec.o
+  CXX      libSBRdec/src/sbr_deb.o
+  CXX      libSBRdec/src/sbr_dec.o
+  CXX      libSBRdec/src/sbr_ram.o
+  CXX      libSBRdec/src/sbr_rom.o
+  CXX      libSBRdec/src/sbrdec_drc.o
+  CXX      libSBRdec/src/sbrdec_freq_sca.o
+  CXX      libSBRdec/src/sbrdecoder.o
+  CXX      libSBRenc/src/bit_sbr.o
+  CXX      libSBRenc/src/code_env.o
+  CXX      libSBRenc/src/env_bit.o
+  CXX      libSBRenc/src/env_est.o
+  CXX      libSBRenc/src/fram_gen.o
+  CXX      libSBRenc/src/invf_est.o
+  CXX      libSBRenc/src/mh_det.o
+  CXX      libSBRenc/src/nf_est.o
+  CXX      libSBRenc/src/ps_bitenc.o
+  CXX      libSBRenc/src/ps_encode.o
+  CXX      libSBRenc/src/ps_main.o
+  CXX      libSBRenc/src/resampler.o
+  CXX      libSBRenc/src/sbr_encoder.o
+  CXX      libSBRenc/src/sbr_misc.o
+  CXX      libSBRenc/src/sbrenc_freq_sca.o
+  CXX      libSBRenc/src/sbrenc_ram.o
+  CXX      libSBRenc/src/sbrenc_rom.o
+  CXX      libSBRenc/src/ton_corr.o
+  CXX      libSBRenc/src/tran_det.o
+  CXX      libPCMutils/src/limiter.o
+  CXX      libPCMutils/src/pcm_utils.o
+  CXX      libPCMutils/src/pcmdmx_lib.o
+  CXX      libFDK/src/FDK_bitbuffer.o
+  CXX      libFDK/src/FDK_core.o
+  CXX      libFDK/src/FDK_crc.o
+  CXX      libFDK/src/FDK_decorrelate.o
+  CXX      libFDK/src/FDK_hybrid.o
+  CXX      libFDK/src/FDK_lpc.o
+  CXX      libFDK/src/FDK_matrixCalloc.o
+  CXX      libFDK/src/FDK_qmf_domain.o
+mv: cannot move 'libFDK/src/.deps/FDK_qmf_domain.Tpo' to 'libFDK/src/.deps/FDK_qmf_domain.Po': No such file or directory
+make[2]: *** [Makefile:1612: libFDK/src/FDK_qmf_domain.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      src/odr_audioenc-odr-audioenc.o
+src/odr-audioenc.cpp:465:12: error: expected identifier before ‘&’ token
+  465 |     memset(&info, 0, sizeof(info));
+      |            ^
+src/odr-audioenc.cpp:465:19: error: expected identifier before numeric constant
+  465 |     memset(&info, 0, sizeof(info));
+      |                   ^
+src/odr-audioenc.cpp:465:19: error: expected ‘,’ or ‘...’ before numeric constant
+src/odr-audioenc.cpp:465:5: error: ISO C++ forbids declaration of ‘memset’ with no type [-fpermissive]
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp: In member function ‘int AudioEnc::run()’:
+src/odr-audioenc.cpp:861:15: error: no matching function for call to ‘AudioEnc::memset(unsigned char*, int, int&)’
+  861 |         memset(outbuf.data(), 0x00, outbuf_size);
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+src/odr-audioenc.cpp:862:15: error: no matching function for call to ‘AudioEnc::memset(unsigned char*, int, std::vector<unsigned char>::size_type)’
+  862 |         memset(input_buf.data(), 0x00, input_buf.size());
+      |         ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+src/odr-audioenc.cpp:1088:19: error: no matching function for call to ‘AudioEnc::memset(AACENC_BufDesc*, int, long unsigned int)’
+ 1088 |             memset(&in_buf, 0, sizeof(in_buf));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+src/odr-audioenc.cpp:1089:19: error: no matching function for call to ‘AudioEnc::memset(AACENC_BufDesc*, int, long unsigned int)’
+ 1089 |             memset(&out_buf, 0, sizeof(out_buf));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+src/odr-audioenc.cpp:1090:19: error: no matching function for call to ‘AudioEnc::memset(AACENC_InArgs*, int, long unsigned int)’
+ 1090 |             memset(&in_args, 0, sizeof(in_args));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+src/odr-audioenc.cpp:1091:19: error: no matching function for call to ‘AudioEnc::memset(AACENC_OutArgs*, int, long unsigned int)’
+ 1091 |             memset(&out_args, 0, sizeof(out_args));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/odr-audioenc.cpp:465:5: note: candidate: ‘int AudioEnc::memset(int&, int)’
+  465 |     memset(&info, 0, sizeof(info));
+      |     ^~~~~~
+src/odr-audioenc.cpp:465:5: note:   candidate expects 2 arguments, 3 provided
+make[2]: *** [Makefile:1305: src/odr_audioenc-odr-audioenc.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      src/odr_audioenc-odr-audioenc.o
+  CXX      src/odr_audioenc-PadInterface.o
+  CXX      src/odr_audioenc-FileInput.o
+  CXX      src/odr_audioenc-AlsaInput.o
+  CXX      src/odr_audioenc-JackInput.o
+  CXX      src/odr_audioenc-GSTInput.o
+  CXX      src/odr_audioenc-VLCInput.o
+  CXX      src/odr_audioenc-Outputs.o
+  CXX      src/odr_audioenc-AACDecoder.o
+  CXX      src/odr_audioenc-StatsPublish.o
+  CC       src/encryption.o
+  CXX      src/odr_audioenc-utils.o
+  CXX      src/odr_audioenc-wavfile.o
+  CXX      contrib/odr_audioenc-ClockTAI.o
+contrib/ClockTAI.cpp:93:23: error: ‘std::vector<std::__cxx11::basic_string<char> > split_pipe_separated_string(const std::string&)’ defined but not used [-Werror=unused-function]
+   93 | static vector<string> split_pipe_separated_string(const string& s)
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+cc1plus: all warnings being treated as errors
+make[2]: *** [Makefile:1473: contrib/odr_audioenc-ClockTAI.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      contrib/odr_audioenc-ClockTAI.o
+contrib/ClockTAI.cpp:93:68: error: attributes are not allowed on a function-definition
+   93 | static vector<string> split_pipe_separated_string(const string& s) __attribute__((unused))
+      |                                                                    ^~~~~~~~~~~~~
+contrib/ClockTAI.cpp:93:23: error: ‘std::vector<std::__cxx11::basic_string<char> > split_pipe_separated_string(const std::string&)’ defined but not used [-Werror=unused-function]
+   93 | static vector<string> split_pipe_separated_string(const string& s) __attribute__((unused))
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+cc1plus: all warnings being treated as errors
+make[2]: *** [Makefile:1473: contrib/odr_audioenc-ClockTAI.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      contrib/odr_audioenc-ClockTAI.o
+contrib/ClockTAI.cpp:96:9: error: ‘#pragma’ is not allowed here
+   96 | #pragma GCC diagnostic pop
+      |         ^~~
+make[2]: *** [Makefile:1473: contrib/odr_audioenc-ClockTAI.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      contrib/odr_audioenc-ClockTAI.o
+  CXX      contrib/odr_audioenc-Globals.o
+  CXX      contrib/odr_audioenc-Log.o
+  CXX      contrib/odr_audioenc-Socket.o
+  CC       contrib/crc.o
+  CXX      contrib/odr_audioenc-ReedSolomon.o
+contrib/ReedSolomon.cpp: In member function ‘int ReedSolomon::encode(void*, void*, size_t)’:
+contrib/ReedSolomon.cpp:79:55: error: unused parameter ‘size’ [-Werror=unused-parameter]
+   79 | int ReedSolomon::encode(void* data, void* fec, size_t size)
+      |                                                ~~~~~~~^~~~
+contrib/ReedSolomon.cpp: In member function ‘int ReedSolomon::encode(void*, size_t)’:
+contrib/ReedSolomon.cpp:105:44: error: unused parameter ‘size’ [-Werror=unused-parameter]
+  105 | int ReedSolomon::encode(void* data, size_t size)
+      |                                     ~~~~~~~^~~~
+cc1plus: all warnings being treated as errors
+make[2]: *** [Makefile:1529: contrib/odr_audioenc-ReedSolomon.o] Error 1
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: *** [Makefile:1662: all-recursive] Error 1
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make: *** [Makefile:674: all] Error 2
+fatal: No names found, cannot describe anything.
+make  all-recursive
+make[1]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+Making all in fdk-aac
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Nothing to be done for 'all'.
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc/fdk-aac'
+make[2]: Entering directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+fatal: No names found, cannot describe anything.
+  CXX      contrib/odr_audioenc-ReedSolomon.o
+  CXX      contrib/edioutput/odr_audioenc-AFPacket.o
+  CXX      contrib/edioutput/odr_audioenc-PFT.o
+  CXX      contrib/edioutput/odr_audioenc-TagItems.o
+  CXX      contrib/edioutput/odr_audioenc-TagPacket.o
+  CXX      contrib/edioutput/odr_audioenc-Transport.o
+  CC       contrib/fec/decode_rs_char.o
+  CC       contrib/fec/encode_rs_char.o
+  CC       contrib/fec/init_rs_char.o
+  CC       libtoolame-dab/a-common.o
+  CC       libtoolame-dab/a-encode.o
+  CC       libtoolame-dab/a-ieeefloat.o
+  CC       libtoolame-dab/a-toolame.o
+  CC       libtoolame-dab/a-portableio.o
+  CC       libtoolame-dab/a-psycho_n1.o
+  CC       libtoolame-dab/a-psycho_0.o
+  CC       libtoolame-dab/a-psycho_1.o
+  CC       libtoolame-dab/a-psycho_2.o
+  CC       libtoolame-dab/a-psycho_3.o
+  CC       libtoolame-dab/a-psycho_4.o
+  CC       libtoolame-dab/a-fft.o
+  CC       libtoolame-dab/a-subband.o
+  CC       libtoolame-dab/a-bitstream.o
+  CC       libtoolame-dab/a-mem.o
+  CC       libtoolame-dab/a-crc.o
+  CC       libtoolame-dab/a-tables.o
+  CC       libtoolame-dab/a-availbits.o
+  CC       libtoolame-dab/a-ath.o
+  CC       libtoolame-dab/a-encode_new.o
+  CC       libtoolame-dab/a-utils.o
+  AR       libtoolame-dab.a
+ar: `u' modifier ignored since `D' is the default (see `U')
+  CXXLD    odr-audioenc
+make[2]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'
+make[1]: Leaving directory '/home/seksan/workspace/streamdab/ODR-AudioEnc'

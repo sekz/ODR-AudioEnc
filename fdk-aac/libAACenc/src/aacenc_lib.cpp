@@ -972,6 +972,7 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
     case AOT_DABPLUS_SBR:
     case AOT_DABPLUS_PS:
       hAacConfig->syntaxFlags |= ((config->userSbrEnabled)    ? AC_SBR_PRESENT : 0);
+      /* fall through */
     case AOT_DABPLUS_AAC_LC:
       config->userTpType = (config->userTpType!=TT_UNKNOWN) ? config->userTpType : TT_DABPLUS;
       hAacConfig->framelength = (config->userFramelength!=(UINT)-1) ? config->userFramelength : 960;

@@ -1280,6 +1280,7 @@ static void CStreamInfoInit(CStreamInfo *pStreamInfo) {
 LINKSPEC_CPP HANDLE_AACDECODER CAacDecoder_Open(
     TRANSPORT_TYPE bsFormat) /*!< bitstream format (adif,adts,loas,...). */
 {
+  (void)bsFormat; /* unused parameter */
   HANDLE_AACDECODER self;
 
   self = GetAacDecoder();
@@ -1449,6 +1450,8 @@ static void CAacDecoder_AcceptFlags(HANDLE_AACDECODER self,
                                     const CSAudioSpecificConfig *asc,
                                     UINT flags, UINT *elFlags, int streamIndex,
                                     int elementOffset) {
+  (void)asc; /* unused parameter */
+  (void)elementOffset; /* unused parameter */
   FDKmemcpy(self->elFlags, elFlags, sizeof(self->elFlags));
 
   self->flags[streamIndex] = flags;

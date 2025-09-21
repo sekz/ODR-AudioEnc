@@ -16,7 +16,7 @@ AM_CPPFLAGS = \
     -I./libFDK/include \
     -I./libPCMutils/include
 
-AM_CXXFLAGS = -fno-exceptions -fno-rtti
+AM_CXXFLAGS = -fno-exceptions -fno-rtti -Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare -Wno-implicit-fallthrough -Wno-duplicated-branches -Wno-duplicated-cond -Wno-type-limits
 
 
 noinst_LIBRARIES = libfdk-aac-dab.a
@@ -273,4 +273,3 @@ EXTRA_DIST = \
     ./libFDK/src/arm/*.cpp \
     ./libFDK/src/mips/*.cpp \
     ./win32/*.h
-

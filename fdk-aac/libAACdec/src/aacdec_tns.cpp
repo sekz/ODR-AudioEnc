@@ -237,6 +237,7 @@ void CTns_ReadDataPresentUsac(HANDLE_FDK_BITSTREAM hBs, CTnsData *pTnsData0,
                               CTnsData *pTnsData1, UCHAR *ptns_on_lr,
                               const CIcsInfo *pIcsInfo, const UINT flags,
                               const UINT elFlags, const int fCommonWindow) {
+  (void)elFlags; /* unused parameter */
   int common_tns = 0;
 
   if (fCommonWindow) {

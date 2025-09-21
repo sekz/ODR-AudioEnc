@@ -946,6 +946,7 @@ void ApplyTools(CAacDecoderChannelInfo *pAacDecoderChannelInfo[],
                 const SamplingRateInfo *pSamplingRateInfo, const UINT flags,
                 const UINT elFlags, const int channel,
                 const int common_window) {
+  (void)common_window; /* unused parameter */
   if (!(flags & (AC_USAC | AC_RSVD50 | AC_MPEGD_RES | AC_RSV603DA))) {
     CPns_Apply(&pAacDecoderChannelInfo[channel]->data.aac.PnsData,
                &pAacDecoderChannelInfo[channel]->icsInfo,
@@ -1018,6 +1019,7 @@ void CBlock_FrequencyToTime(
     CAacDecoderChannelInfo *pAacDecoderChannelInfo, PCM_DEC outSamples[],
     const SHORT frameLen, const int frameOk, FIXP_DBL *pWorkBuffer1,
     const INT aacOutDataHeadroom, UINT elFlags, INT elCh) {
+  (void)elCh; /* unused parameter */
   int fr, fl, tl, nSpec;
 
 #if defined(FDK_ASSERT_ENABLE)

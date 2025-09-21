@@ -319,6 +319,7 @@ static INT aacDecoder_ConfigCallback(void *handle,
 
 static INT aacDecoder_FreeMemCallback(void *handle,
                                       const CSAudioSpecificConfig *pAscStruct) {
+  (void)pAscStruct; /* unused parameter */
   TRANSPORTDEC_ERROR errTp = TRANSPORTDEC_OK;
   HANDLE_AACDECODER self = (HANDLE_AACDECODER)handle;
 
