@@ -167,6 +167,7 @@ class BuddhistCalendar {
 public:
     // Date conversion
     static ThaiMetadata::BuddhistDate gregorian_to_buddhist(int year, int month, int day);
+    static ThaiMetadata::BuddhistDate gregorian_to_buddhist(time_t timestamp);
     static std::chrono::system_clock::time_point buddhist_to_gregorian(
         int be_year, int month, int day);
     

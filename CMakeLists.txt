@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Build options
-option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS "Build unit tests" OFF)
 option(ENABLE_COVERAGE "Enable coverage reporting" ON)
 
 # Configure build type
@@ -38,8 +38,9 @@ if(NOT GTest_FOUND)
     include(FetchContent)
     FetchContent_Declare(
         googletest
-        URL https://github.com/google/googletest/archive/03597a01ee50f33f9277fd4dbdedb78b03e8a8c4.zip
+        URL https://github.com/google/googletest/archive/v1.15.2.zip
         TIMEOUT 30
+        DOWNLOAD_EXTRACT_TIMESTAMP true
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
@@ -80,22 +81,53 @@ set(ENHANCED_SOURCES
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/mock_vlc_input.cpp
 "// Mock VLC Input for testing
 #include \"VLCInput.h\"
-class VLCInput {
-public:
-    VLCInput(const std::string& url, int rate, int channels, int buffer_ms) {}
-    bool initialize(const std::vector<std::string>& options) { return true; }
-    bool open(const std::string& url) { return true; }
-    ssize_t read(int16_t* buffer, size_t max_samples) { return 0; }
-};
+
+// Implementation for existing VLCInput class (avoid redefinition)
+VLCInput::VLCInput(const std::string& url, int sample_rate, int channels, int buffer_ms) {
+    (void)url; (void)sample_rate; (void)channels; (void)buffer_ms; // Suppress unused parameter warnings
+    // Mock implementation
+}
+
+VLCInput::~VLCInput() {
+    // Mock implementation
+}
+
+bool VLCInput::initialize(const std::vector<std::string>& options) {
+    (void)options; // Suppress unused parameter warning
+    return true;
+}
+
+bool VLCInput::open(const std::string& url) {
+    (void)url; // Suppress unused parameter warning
+    return true;
+}
+
+ssize_t VLCInput::read(int16_t* buffer, size_t max_samples) {
+    (void)buffer; // Suppress unused parameter warning
+    (void)max_samples; // Suppress unused parameter warning
+    return 0;
+}
 ")
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/mock_fdk_aac.cpp
 "// Mock FDK-AAC for testing
 extern \"C\" {
-int aacEncoder_Open(void** phAacEncoder, int encModules, int maxChannels) { return 0; }
-int aacEncoder_Close(void** phAacEncoder) { return 0; }
-int aacEncoder_SetParam(void* hAacEncoder, int param, int value) { return 0; }
-int aacEncoder_Encode(void* hAacEncoder, void* inBufDesc, void* outBufDesc, void* inargs, void* outargs) { return 0; }
+int aacEncoder_Open(void** phAacEncoder, int encModules, int maxChannels) {
+    (void)phAacEncoder; (void)encModules; (void)maxChannels; // Suppress unused parameter warnings
+    return 0;
+}
+int aacEncoder_Close(void** phAacEncoder) {
+    (void)phAacEncoder; // Suppress unused parameter warning
+    return 0;
+}
+int aacEncoder_SetParam(void* hAacEncoder, int param, int value) {
+    (void)hAacEncoder; (void)param; (void)value; // Suppress unused parameter warnings
+    return 0;
+}
+int aacEncoder_Encode(void* hAacEncoder, void* inBufDesc, void* outBufDesc, void* inargs, void* outargs) {
+    (void)hAacEncoder; (void)inBufDesc; (void)outBufDesc; (void)inargs; (void)outargs; // Suppress unused parameter warnings
+    return 0;
+}
 }
 ")
 

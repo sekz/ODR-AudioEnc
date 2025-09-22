@@ -335,6 +335,24 @@ ThaiMetadata::BuddhistDate BuddhistCalendar::gregorian_to_buddhist(int year, int
     return result;
 }
 
+ThaiMetadata::BuddhistDate BuddhistCalendar::gregorian_to_buddhist(time_t timestamp) {
+    // Convert time_t to tm structure
+    struct tm* timeinfo = std::localtime(&timestamp);
+    if (timeinfo == nullptr) {
+        // Return invalid date if conversion fails
+        ThaiMetadata::BuddhistDate result;
+        result.is_valid = false;
+        return result;
+    }
+    
+    // Use the existing overload with year, month, day
+    return gregorian_to_buddhist(
+        timeinfo->tm_year + 1900,  // tm_year is years since 1900
+        timeinfo->tm_mon + 1,      // tm_mon is 0-based, we need 1-based
+        timeinfo->tm_mday          // tm_mday is already 1-based
+    );
+}
+
 string BuddhistCalendar::get_thai_month_name(int month) {
     if (month >= 1 && month <= 12) {
         return thai_month_names_[month];

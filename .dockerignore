@@ -1,0 +1,138 @@
+# === ODR C++ Component .dockerignore ===
+# Optimized for C++ build with autotools/CMake and enhanced StreamDAB features
+# This file excludes unnecessary files to optimize Docker build performance
+
+# === Build Artifacts ===
+*.o
+*.lo
+*.la
+*.al
+*.libs
+*.so
+*.so.*
+*.a
+*.pyc
+*.pyo
+
+# === Build Directories ===
+build/
+build-*/
+.libs/
+autom4te.cache/
+.deps/
+.dirstamp
+
+# === Autotools Generated Files ===
+aclocal.m4
+config.guess
+config.sub
+config.status
+config.log
+configure
+Makefile
+Makefile.in
+libtool
+depcomp
+install-sh
+missing
+compile
+ltmain.sh
+
+# === CMake Generated Files ===
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# === Test Build Artifacts ===
+test-build/
+tests/build/
+*_test
+*_tests
+test-results/
+lib/libgtest*.a
+lib/libgmock*.a
+
+# === Package Manager & Dependencies ===
+fdk-aac/
+external/
+third-party/
+vendor/
+
+# === IDE & Editor Files ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+
+# === System Files ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# === Logs & Debug ===
+*.log
+*.log.*
+build_validation.log
+config.log
+debug.log
+error.log
+
+# === Environment & Configuration ===
+.env
+.env.*
+!.env.example
+
+# === Version Control ===
+.git/
+.gitignore
+.gitattributes
+
+# === Documentation ===
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+docs/
+doc/
+
+# === StreamDAB Specific ===
+# Enhanced features build artifacts
+streamdab-*.log
+thai-encoding-test.log
+api-integration.log
+
+# Static linking artifacts
+*.static
+*-static
+
+# StreamDAB API integration
+api-test/
+websocket-test/
+
+# Performance profiling
+*.prof
+callgrind.*
+gprof.*
+
+# Security
+private_keys/
+certificates/
+*.pem
+*.crt
+*.key
+!public.key
+
+# Backup files
+*.bak
+*.backup
+*~

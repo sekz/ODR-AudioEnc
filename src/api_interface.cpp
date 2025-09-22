@@ -125,6 +125,7 @@ void StreamDABApiInterface::stop() {
 
 // HTTP request handlers
 ApiResponse StreamDABApiInterface::handle_get_status(const ApiRequest& request) {
+    (void)request; // Suppress unused parameter warning
     ApiResponse response;
     response.status = HttpStatus::OK;
     response.content_type = "application/json";
@@ -160,6 +161,7 @@ ApiResponse StreamDABApiInterface::handle_get_status(const ApiRequest& request) 
 }
 
 ApiResponse StreamDABApiInterface::handle_get_metadata(const ApiRequest& request) {
+    (void)request; // Suppress unused parameter warning
     ApiResponse response;
     response.status = HttpStatus::OK;
     response.content_type = "application/json";
@@ -195,6 +197,7 @@ ApiResponse StreamDABApiInterface::handle_get_metadata(const ApiRequest& request
 }
 
 ApiResponse StreamDABApiInterface::handle_get_quality_metrics(const ApiRequest& request) {
+    (void)request; // Suppress unused parameter warning
     ApiResponse response;
     response.status = HttpStatus::OK;
     response.content_type = "application/json";
@@ -258,6 +261,7 @@ ApiResponse StreamDABApiInterface::handle_post_stream_config(const ApiRequest& r
 }
 
 ApiResponse StreamDABApiInterface::handle_post_reconnect(const ApiRequest& request) {
+    (void)request; // Suppress unused parameter warning
     ApiResponse response;
     response.status = HttpStatus::OK;
     response.content_type = "application/json";
@@ -283,6 +287,7 @@ ApiResponse StreamDABApiInterface::handle_post_reconnect(const ApiRequest& reque
 }
 
 ApiResponse StreamDABApiInterface::handle_get_health(const ApiRequest& request) {
+    (void)request; // Suppress unused parameter warning
     ApiResponse response;
     response.status = HttpStatus::OK;
     response.content_type = "application/json";
@@ -509,13 +514,15 @@ void HttpServer::server_loop() {
         // Handle request in separate thread (simplified)
         thread([this, client_socket]() {
             char buffer[8192] = {0};
-            read(client_socket, buffer, 8191);
+            ssize_t bytes_read = read(client_socket, buffer, 8191);
+            (void)bytes_read; // Suppress unused result warning
             
             ApiRequest request = parse_http_request(string(buffer));
             ApiResponse response = handle_request(request);
             
             string response_str = format_http_response(response);
-            write(client_socket, response_str.c_str(), response_str.length());
+            ssize_t bytes_written = write(client_socket, response_str.c_str(), response_str.length());
+            (void)bytes_written; // Suppress unused result warning
             
             close(client_socket);
         }).detach();
@@ -676,6 +683,23 @@ string to_json(const ThaiMetadata& metadata) {
     return oss.str();
 }
 
+string to_json(const map<string, string>& data) {
+    ostringstream oss;
+    oss << "{";
+    
+    bool first = true;
+    for (const auto& pair : data) {
+        if (!first) {
+            oss << ",";
+        }
+        oss << "\"" << pair.first << "\": \"" << pair.second << "\"";
+        first = false;
+    }
+    
+    oss << "}";
+    return oss.str();
+}
+
 map<string, string> parse_query_string(const string& query) {
     map<string, string> params;
     istringstream stream(query);
@@ -699,7 +723,7 @@ string url_decode(const string& input) {
     
     for (size_t i = 0; i < input.length(); ++i) {
         if (input[i] == '%' && i + 2 < input.length()) {
-            int hex_val;
+            unsigned int hex_val;
             sscanf(input.substr(i + 1, 2).c_str(), "%x", &hex_val);
             result.push_back(static_cast<char>(hex_val));
             i += 2;

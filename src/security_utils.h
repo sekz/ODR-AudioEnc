@@ -29,6 +29,9 @@
 #include <map>
 #include <functional>
 #include <cstdint>
+#include <fstream>
+#include <condition_variable>
+#include <cmath>
 
 namespace StreamDAB {
 
@@ -156,7 +159,7 @@ private:
     };
     
     std::map<void*, AllocationInfo> allocations_;
-    std::mutex allocations_mutex_;
+    mutable std::mutex allocations_mutex_;
     std::atomic<size_t> total_allocated_{0};
     std::atomic<size_t> peak_allocated_{0};
     std::atomic<size_t> allocation_count_{0};

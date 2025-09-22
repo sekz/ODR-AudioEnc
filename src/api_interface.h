@@ -148,7 +148,8 @@ private:
     std::map<std::string, RateLimitEntry> rate_limit_map_;
     std::mutex rate_limit_mutex_;
     
-    // Metrics and monitoring
+public:
+    // Metrics and monitoring (made public for ApiUtils access)
     struct ApiMetrics {
         size_t total_requests = 0;
         size_t successful_requests = 0;
@@ -158,10 +159,13 @@ private:
         double average_response_time_ms = 0.0;
         size_t active_clients = 0;
     };
+
+private:
     ApiMetrics metrics_;
     std::mutex metrics_mutex_;
 
-    // Request handlers
+public:
+    // Request handlers (made public for lambda access)
     ApiResponse handle_get_status(const ApiRequest& request);
     ApiResponse handle_get_metadata(const ApiRequest& request);
     ApiResponse handle_get_quality_metrics(const ApiRequest& request);
@@ -171,6 +175,8 @@ private:
     ApiResponse handle_get_health(const ApiRequest& request);
     ApiResponse handle_get_statistics(const ApiRequest& request);
     ApiResponse handle_get_thai_analysis(const ApiRequest& request);
+
+private:
     
     // WebSocket handlers
     void handle_websocket_connection(const std::string& client_id);
@@ -351,6 +357,7 @@ namespace ApiUtils {
     std::string to_json(const ThaiMetadata& metadata);
     std::string to_json(const StreamDABApiInterface::HealthStatus& health);
     std::string to_json(const StreamDABApiInterface::ApiMetrics& metrics);
+    std::string to_json(const std::map<std::string, std::string>& data);
     
     // Validation
     bool is_valid_stream_url(const std::string& url);

@@ -26,8 +26,12 @@
 #include <sstream>
 #include <sys/resource.h>
 #include <unistd.h>
-#include <immintrin.h>  // For SIMD intrinsics
+#include <immintrin.h>  // For SIMD intrinsics (x86/x64)
+
+// Conditionally include ARM NEON only on ARM architectures
+#if defined(__ARM_NEON) || defined(__aarch64__)
 #include <arm_neon.h>   // For ARM NEON (conditionally compiled)
+#endif
 
 using namespace std;
 using namespace std::chrono;
