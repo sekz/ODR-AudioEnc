@@ -81,20 +81,20 @@ echo "📅 Buddhist Era: $(date '+%Y' | awk '{print $1 + 543}') ($(date '+%Y-%m-
 
 # Parse database URL for connection check
 if [ -n "$DATABASE_URL" ]; then
-    POSTGRES_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
-    POSTGRES_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+POSTGRES_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+POSTGRES_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
 else
-    POSTGRES_HOST="postgres-config-dev"
-    POSTGRES_PORT="5432"
+POSTGRES_HOST="postgres-config-dev"
+POSTGRES_PORT="5432"
 fi
 
 # Parse Redis URL for connection check
 if [ -n "$REDIS_URL" ]; then
-    REDIS_HOST=$(echo $REDIS_URL | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
-    REDIS_PORT=$(echo $REDIS_URL | sed -n 's/.*:\([0-9]*\).*/\1/p')
+REDIS_HOST=$(echo $REDIS_URL | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+REDIS_PORT=$(echo $REDIS_URL | sed -n 's/.*:\([0-9]*\).*/\1/p')
 else
-    REDIS_HOST="redis-config-dev"
-    REDIS_PORT="6379"
+REDIS_HOST="redis-config-dev"
+REDIS_PORT="6379"
 fi
 
 # Wait for dependencies with proper connection testing
@@ -136,6 +136,12 @@ stderr_logfile=/var/log/supervisor/odr-audioenc.log
 autorestart=true
 user=streamdab
 EOF
+
+# Copy multi-instance entrypoint scripts (Phase 4.5b - ODR Multi-Instance)
+COPY entrypoint-multi.sh /app/
+COPY entrypoint-multi-with-health.sh /app/
+RUN chmod +x /app/entrypoint-multi*.sh && \
+    chown streamdab:streamdab /app/entrypoint-multi*.sh
 
 # Health check (simplified for development)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
