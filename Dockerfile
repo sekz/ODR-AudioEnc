@@ -57,8 +57,11 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Create runtime user
-RUN groupadd -r streamdab && useradd -r -g streamdab streamdab
+# Create runtime user with UID 1000 and home directory
+ARG BUILD_UID=1000
+ARG BUILD_GID=1000
+RUN groupadd -g ${BUILD_GID} streamdab && \
+    useradd -m -u ${BUILD_UID} -g streamdab -s /bin/bash -d /home/streamdab streamdab
 
 # Copy built binaries from builder stage
 COPY --from=builder /usr/local /usr/local
@@ -67,9 +70,9 @@ COPY --from=builder /usr/local /usr/local
 RUN mkdir -p \
     /app/data \
     /app/logs \
-    /var/log/supervisor \
+    /home/streamdab/logs \
     /etc/supervisor/conf.d \
-    && chown -R streamdab:streamdab /app /var/log/supervisor
+    && chown -R streamdab:streamdab /app /home/streamdab
 
 # Create startup script with environment variable support
 RUN cat > /app/start.sh << 'EOF' && chmod +x /app/start.sh
@@ -118,9 +121,9 @@ file=/tmp/supervisor.sock
 chmod=0700
 
 [supervisord]
-logfile=/var/log/supervisor/supervisord.log
+logfile=/home/streamdab/logs/supervisord.log
 pidfile=/tmp/supervisord.pid
-childlogdir=/var/log/supervisor
+childlogdir=/home/streamdab/logs
 nodaemon=true
 
 [rpcinterface:supervisor]
@@ -131,8 +134,8 @@ serverurl=unix:///tmp/supervisor.sock
 
 [program:odr-audioenc-service]
 command=bash -c "echo 'ODR-AudioEnc service ready for StreamDAB Thailand DAB+' && while true; do echo '[$(date)] ODR-AudioEnc service running...'; sleep 60; done"
-stdout_logfile=/var/log/supervisor/odr-audioenc.log
-stderr_logfile=/var/log/supervisor/odr-audioenc.log
+stdout_logfile=/home/streamdab/logs/odr-audioenc.log
+stderr_logfile=/home/streamdab/logs/odr-audioenc.log
 autorestart=true
 user=streamdab
 EOF
