@@ -34,3 +34,8 @@ odr-audioenc
 CMakeCache.txt
 CMakeFiles/
 build/
+
+# editor/autoconf backups and local validation artifacts
+*~
+validate_final
+build_validation.log
