@@ -22,6 +22,16 @@
 using namespace StreamDAB;
 using namespace std;
 
+// 'ก' is a multi-byte UTF-8 sequence, so string(n, 'ก') would not repeat the character
+static string repeat_utf8(const string& unit, size_t count) {
+    string result;
+    result.reserve(unit.size() * count);
+    for (size_t i = 0; i < count; ++i) {
+        result += unit;
+    }
+    return result;
+}
+
 class ThaiMetadataTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -56,7 +66,7 @@ TEST_F(ThaiMetadataTest, ValidateThaiUTF8) {
     EXPECT_TRUE(ThaiCharsetConverter::is_valid_thai_utf8(mixed_text_));
     
     // Test invalid UTF-8
-    string invalid_utf8 = "\xFF\xFE\xInvalid";
+    string invalid_utf8 = "\xFF\xFE" "Invalid";
     EXPECT_FALSE(ThaiCharsetConverter::is_valid_thai_utf8(invalid_utf8));
 }
 
@@ -126,7 +136,7 @@ TEST_F(ThaiMetadataTest, ProcessThaiDLS) {
 }
 
 TEST_F(ThaiMetadataTest, DLSLengthConstraints) {
-    string long_text = string(200, 'ก'); // Very long Thai text
+    string long_text = repeat_utf8("ก", 200); // Very long Thai text
     vector<uint8_t> dls_data = dls_processor_->process_thai_text(long_text);
     
     EXPECT_LE(dls_data.size(), MAX_DLS_LENGTH_THAI + 1); // +1 for charset indicator
@@ -225,7 +235,7 @@ TEST_F(ThaiMetadataTest, ValidateMetadata) {
     
     // Test invalid metadata
     ThaiMetadata invalid_metadata;
-    invalid_metadata.title_utf8 = string(1000, 'ก'); // Too long
+    invalid_metadata.title_utf8 = repeat_utf8("ก", 1000); // Too long
     EXPECT_FALSE(processor_->validate_metadata(invalid_metadata));
 }
 
@@ -288,7 +298,7 @@ TEST_F(ThaiMetadataTest, TextProcessingUtilities) {
 
 // Error Handling Tests
 TEST_F(ThaiMetadataTest, HandleInvalidUTF8) {
-    string invalid_utf8 = "\xFF\xFE\xInvalid";
+    string invalid_utf8 = "\xFF\xFE" "Invalid";
     
     EXPECT_THROW({
         ThaiCharsetConverter::utf8_to_dab_thai(invalid_utf8);
@@ -296,7 +306,7 @@ TEST_F(ThaiMetadataTest, HandleInvalidUTF8) {
 }
 
 TEST_F(ThaiMetadataTest, HandleLongText) {
-    string very_long_text = string(10000, 'ก');
+    string very_long_text = repeat_utf8("ก", 10000);
     
     EXPECT_NO_THROW({
         processor_->process_raw_metadata(very_long_text, "", "", "");

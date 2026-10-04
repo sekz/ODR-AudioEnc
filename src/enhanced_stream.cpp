@@ -19,6 +19,7 @@
 
 #include "enhanced_stream.h"
 #include <algorithm>
+#include <map>
 #include <numeric>
 #include <cmath>
 #include <regex>
@@ -190,10 +191,16 @@ void EnhancedStreamProcessor::monitor_stream() {
         }
         
         // Check stream health
-        auto now = steady_clock::now();
-        auto silence_duration = duration_cast<seconds>(now - metrics_.last_audio).count();
+        steady_clock::time_point last_audio;
+        int silence_timeout_s;
+        {
+            lock_guard<mutex> lock(metrics_mutex_);
+            last_audio = metrics_.last_audio;
+            silence_timeout_s = config_.silence_timeout_s;
+        }
+        auto silence_duration = duration_cast<seconds>(steady_clock::now() - last_audio).count();
         
-        if (silence_duration > config_.silence_timeout_s) {
+        if (silence_duration > silence_timeout_s) {
             printf("Stream silence timeout, attempting reconnection...\n");
             connected_ = false;
             continue;
@@ -232,9 +239,10 @@ ssize_t EnhancedStreamProcessor::get_samples(vector<int16_t>& samples, size_t ma
             apply_normalization(samples);
         }
         
-        // Update last audio timestamp
+        // Update last audio timestamp and sample counter
         lock_guard<mutex> lock(metrics_mutex_);
         metrics_.last_audio = steady_clock::now();
+        total_samples_ += static_cast<size_t>(samples_read);
     }
     else if (samples_read < 0) {
         // Error occurred, mark as disconnected
@@ -328,21 +336,131 @@ void EnhancedStreamProcessor::smooth_gain_transition() {
     current_gain_ += (target_gain_ - current_gain_) * gain_smoothing_;
 }
 
-StreamQualityMetrics EnhancedStreamProcessor::get_quality_metrics() {
+StreamQualityMetrics EnhancedStreamProcessor::get_quality_metrics() const {
     lock_guard<mutex> lock(metrics_mutex_);
     return metrics_;
 }
 
 string EnhancedStreamProcessor::get_current_url() const {
-    if (current_fallback_index_ == -1) {
+    lock_guard<mutex> lock(metrics_mutex_);
+
+    const int index = current_fallback_index_;
+    if (index < 0) {
         return config_.primary_url;
     }
     
-    if (current_fallback_index_ < static_cast<int>(config_.fallback_urls.size())) {
-        return config_.fallback_urls[current_fallback_index_];
+    if (index < static_cast<int>(config_.fallback_urls.size())) {
+        return config_.fallback_urls[index];
     }
     
     return "";
+}
+
+bool EnhancedStreamProcessor::update_config(const StreamConfig& config) {
+    if (config.primary_url.empty() or config.reconnect_delay_ms < 0 or
+            config.max_reconnects < 0 or config.buffer_ms < 0 or
+            config.silence_timeout_s < 0 or config.connection_timeout_ms < 0) {
+        return false;
+    }
+
+    lock_guard<mutex> lock(metrics_mutex_);
+    config_ = config;
+
+    // A fallback index that no longer exists would select no URL
+    if (current_fallback_index_ >= static_cast<int>(config_.fallback_urls.size())) {
+        current_fallback_index_ = -1;
+    }
+
+    // Normalisation changes take effect from unity gain
+    if (!config_.enable_normalization) {
+        current_gain_ = 1.0;
+        target_gain_ = 1.0;
+    }
+    return true;
+}
+
+StreamConfig EnhancedStreamProcessor::get_config() const {
+    lock_guard<mutex> lock(metrics_mutex_);
+    return config_;
+}
+
+void EnhancedStreamProcessor::reset_metrics() {
+    lock_guard<mutex> lock(metrics_mutex_);
+
+    metrics_ = StreamQualityMetrics();
+    metrics_.start_time = steady_clock::now();
+    metrics_.last_audio = metrics_.start_time;
+    total_samples_ = 0;
+    rms_history_.clear();
+}
+
+void EnhancedStreamProcessor::cycle_fallback() {
+    lock_guard<mutex> lock(metrics_mutex_);
+
+    if (config_.fallback_urls.empty()) {
+        return;
+    }
+
+    int next = current_fallback_index_ + 1;
+    if (next >= static_cast<int>(config_.fallback_urls.size())) {
+        next = -1; // back to the primary URL
+    }
+    current_fallback_index_ = next;
+}
+
+bool EnhancedStreamProcessor::force_reconnect() {
+    if (!running_) {
+        return false;
+    }
+
+    {
+        lock_guard<mutex> lock(metrics_mutex_);
+        metrics_.reconnect_count++;
+    }
+    connected_ = false;
+    reconnect_cv_.notify_all();
+    return true;
+}
+
+string EnhancedStreamProcessor::get_current_title() const {
+    return vlc_input_ ? vlc_input_->get_current_title() : "";
+}
+
+string EnhancedStreamProcessor::get_current_artist() const {
+    return vlc_input_ ? vlc_input_->get_current_artist() : "";
+}
+
+string EnhancedStreamProcessor::get_stream_info() const {
+    const auto stats = get_statistics();
+
+    ostringstream oss;
+    oss << "url=" << get_current_url()
+        << " connected=" << (connected_ ? "yes" : "no")
+        << " samples=" << stats.total_samples_processed
+        << " reconnects=" << stats.total_reconnects
+        << " underruns=" << stats.total_buffer_underruns
+        << " bitrate_kbps=" << stats.average_bitrate_kbps;
+    return oss.str();
+}
+
+EnhancedStreamProcessor::StreamStats EnhancedStreamProcessor::get_statistics() const {
+    lock_guard<mutex> lock(metrics_mutex_);
+
+    StreamStats stats;
+    stats.total_samples_processed = total_samples_;
+    stats.total_reconnects = metrics_.reconnect_count;
+    stats.total_buffer_underruns = metrics_.underrun_count;
+    stats.uptime_start = metrics_.start_time;
+
+    // Average PCM input rate: 16 bit samples over the time since start
+    const double elapsed_s = duration<double>(steady_clock::now() - metrics_.start_time).count();
+    if (total_samples_ > 0 and elapsed_s > 0.0) {
+        stats.average_bitrate_kbps = (static_cast<double>(total_samples_) * 16.0 / elapsed_s) / 1000.0;
+    }
+
+    // The configured network cache is the nominal latency while a stream is connected
+    stats.current_latency_ms = connected_ ? static_cast<double>(config_.buffer_ms) : 0.0;
+    return stats;
 }
 
 bool EnhancedStreamProcessor::is_healthy() const {
@@ -357,6 +475,8 @@ vector<string> EnhancedStreamProcessor::get_health_issues() const {
         issues.push_back("Stream disconnected");
     }
     
+    lock_guard<mutex> lock(metrics_mutex_);
+
     auto now = steady_clock::now();
     auto silence_duration = duration_cast<seconds>(now - metrics_.last_audio).count();
     
@@ -382,6 +502,40 @@ bool validate_stream_url(const string& url) {
     auto parsed = StreamURLParser::parse(url);
     return parsed.is_valid && 
            StreamURLParser::is_supported_protocol(parsed.protocol);
+}
+
+vector<string> detect_stream_format(const string& url) {
+    // Look at the URL path only (not the query string or fragment)
+    string path = url;
+    const size_t scheme_end = path.find("://");
+    if (scheme_end != string::npos) {
+        path = path.substr(scheme_end + 3);
+        const size_t path_start = path.find('/');
+        path = (path_start == string::npos) ? string() : path.substr(path_start);
+    }
+    path = path.substr(0, path.find_first_of("?#"));
+
+    const size_t dot = path.rfind('.');
+    if (dot == string::npos or path.find('/', dot) != string::npos) {
+        return {};
+    }
+
+    string ext = path.substr(dot + 1);
+    transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    static const map<string, string> formats = {
+        {"mp3", "mp3"}, {"mp2", "mp2"},
+        {"aac", "aac"}, {"aacp", "aac"}, {"m4a", "aac"},
+        {"ogg", "ogg"}, {"oga", "ogg"}, {"opus", "opus"},
+        {"flac", "flac"}, {"wav", "wav"},
+        {"m3u8", "hls"}, {"m3u", "playlist"}, {"pls", "playlist"},
+    };
+
+    const auto it = formats.find(ext);
+    if (it == formats.end()) {
+        return {};
+    }
+    return {it->second};
 }
 
 bool test_stream_connectivity(const string& url, int timeout_ms) {

@@ -127,8 +127,8 @@ TEST_F(EnhancedStreamProcessorTest, StreamURLManagement) {
 TEST_F(EnhancedStreamProcessorTest, HealthChecking) {
     EXPECT_TRUE(processor_->initialize());
     
-    // Initially should be healthy (no connection issues yet)
-    EXPECT_TRUE(processor_->is_healthy());
+    // Healthy means "no issues": a processor that has not connected yet is not healthy
+    EXPECT_FALSE(processor_->is_healthy());
     
     auto health_issues = processor_->get_health_issues();
     // Should have at least "Stream disconnected" since we haven't connected
