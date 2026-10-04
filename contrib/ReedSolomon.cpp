@@ -78,6 +78,7 @@ void ReedSolomon::setReverse(bool state)
 
 int ReedSolomon::encode(void* data, void* fec, size_t size)
 {
+    (void)size; /* unused parameter */
     uint8_t* input = reinterpret_cast<uint8_t*>(data);
     uint8_t* output = reinterpret_cast<uint8_t*>(fec);
     int ret = 0;
@@ -104,6 +105,7 @@ int ReedSolomon::encode(void* data, void* fec, size_t size)
 
 int ReedSolomon::encode(void* data, size_t size)
 {
+    (void)size; /* unused parameter */
     uint8_t* input = reinterpret_cast<uint8_t*>(data);
     int ret = 0;
 

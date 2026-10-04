@@ -463,7 +463,7 @@ public:
     vector<string> edi_output_uris;
 
     void *rs_handler = nullptr;
-    AACENC_InfoStruct aac_info = { 0 };
+    AACENC_InfoStruct aac_info = {};
     int aot = AOT_NONE;
 
     string decode_wavfilename;
@@ -1081,9 +1081,9 @@ int AudioEnc::run()
         int numOutBytes = 0;
         if (read_bytes and
                 selected_encoder == encoder_selection_t::fdk_dabplus) {
-            AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
-            AACENC_InArgs in_args = { 0 };
-            AACENC_OutArgs out_args = { 0 };
+            AACENC_BufDesc in_buf = {}, out_buf = {};
+            AACENC_InArgs in_args = {};
+            AACENC_OutArgs out_args = {};
             // -------------- AAC Encoding
             //
             int in_identifier[] = {IN_AUDIO_DATA, IN_ANCILLRY_DATA};

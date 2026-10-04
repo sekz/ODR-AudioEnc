@@ -199,7 +199,10 @@ static inline UCHAR fdk_sacenc_getCldQuantOffset(const INT bUseCoarseQuant) {
   return ((bUseCoarseQuant) ? OFFSET_CLD_QUANT_COARSE : OFFSET_CLD_QUANT_FINE);
 }
 static inline UCHAR fdk_sacenc_getIccQuantOffset(const INT bUseCoarseQuant) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wduplicated-branches"
   return ((bUseCoarseQuant) ? OFFSET_ICC_QUANT_COARSE : OFFSET_ICC_QUANT_FINE);
+#pragma GCC diagnostic pop
 }
 
 static inline UCHAR fdk_sacenc_getNumberCldQuantLevels(
