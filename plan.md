@@ -59,13 +59,39 @@ Question: does our code add implementation of an existing standard, such as DAB+
 ### C. Ongoing sync
 - [ ] C1. Repeat A and B whenever upstream `master` or `next` changes.
 
-## Known issues (not fixed, unrelated to the sync)
+## CMake unit tests: fixed
 
-- The CMake unit tests do not build, on `origin/master` before our changes as well:
-  - `tests/test_thai_metadata.cpp:59,291`: `\x` escape with no hex digits.
-  - `tests/test_api_interface.cpp`: the gmock `MockEnhancedStreamProcessor` marks methods `override`, but they are not virtual in `EnhancedStreamProcessor`.
-  - So none of the 4 CMake tests have been run. These need a separate fix.
-- `contrib/ClockTAI.cpp` still warns `fill_bulletin` defined but not used.
+All 4 suites build and pass (security 49, thai 31, enhanced stream 19, API 27), warning-free, stable over repeated runs. The autotools build with `--enable-vlc` also has 0 warnings.
+
+Build/test setup:
+- libcurl is found before the `.a` library preference, so it links dynamically (the static `libcurl.a` needs its whole dependency chain).
+- Added `src/api_serialization.cpp` and `src/api_websocket.cpp` to the CMake sources.
+
+Real bugs fixed in the code (found by the tests):
+- `thai_metadata.cpp`: `remove_control_characters` compared a signed `char` with 32, which deleted every non-ASCII byte, so all Thai metadata was erased. `normalize_whitespace` passed a negative `char` to `isspace` (undefined behaviour).
+- `security_utils.cpp`: the same signed-`char` bug in `validate_metadata_field` and `sanitize_metadata` (Thai rejected or stripped); `sanitize_url` did not neutralise markup (now percent-encodes unsafe characters); `validate_hostname` accepted `192.168.1`; regexes were recompiled on every call; `normalize_samples_simd` zero-extended instead of sign-extending, processed only 4 of every 8 samples, and wrapped instead of clipping.
+- `api_interface.cpp`: `stop()` could hang forever (blocking `accept`); request bodies were corrupted; authentication, method checks, rate limiting and request counters were never applied; JSON output was not escaped; `url_decode` used an uninitialised value; tokens came from a seeded Mersenne Twister; API key comparison was not constant-time; `SO_REUSEPORT` allowed two processes on one port.
+- `enhanced_stream`: data races on `config_` and `metrics_` (now guarded; `get_config()` returns a copy).
+- `ClockTAI.cpp`: `fill_bulletin` is now compiled only with `HAVE_CURL`.
+
+Newly implemented (were declared but missing): `SecureBuffer` read/clear/resize/integrity, `MemoryPool`, `AuditLogger`, `PerformanceMonitor` accessors, `ThreadSafeQueue` (message-based), `EnhancedStreamProcessor` update/cycle/reset/statistics/reconnect, `StreamUtils::detect_stream_format`, Thai DLS/metadata validation, MessagePack encoder/decoder, a small JSON reader, and a real RFC 6455 WebSocket server on port + 1 (clients send `{"subscribe": "status"}` etc.).
+
+Test fixes (the tests themselves were wrong): `\xInvalid` escape, a lambda passed through curl's C varargs (undefined behaviour), the HTTP helper ignored its headers and method arguments, `string(n, 'ก')` with a multi-byte literal, a peak-memory expectation that a high-water mark cannot meet, a shared-singleton counter compared as an absolute, and a test that asserted both "healthy" and "disconnected".
+
+## Known issues (not fixed)
+
+These are declared in headers but have no implementation. Nothing calls them (a call would fail to link), so they are latent:
+- `InputValidator`: `validate_metadata_length`, `validate_string_length`, `contains_only_safe_chars`, `sanitize_filename`, `escape_html_entities`, `remove_control_characters`
+- `MemoryManager::report_memory_usage`; `PerformanceMonitor::trigger_*_optimization` and the private `optimize_*`
+- `SIMDProcessor`: `mix_stereo_samples_simd`, `secure_memcpy`, `secure_memset`
+- `StreamUtils`: `extract_metadata_from_response`, `measure_stream_latency`
+- `StreamDABApiInterface`: `handle_get_stream_info`, `handle_get_statistics`, `handle_get_thai_analysis`, `broadcast_metadata_update`, `broadcast_quality_metrics`, `cleanup_disconnected_clients`
+- `ApiUtils`: `url_encode`, `is_valid_api_key`, `is_valid_client_id`, `hash_api_key`; class `SSLContext`
+
+Other limitations:
+- `EnhancedStreamProcessor` still reads `config_` without the lock in its connection code, and it needs the mock `VLCInput` (`get_current_title()` and similar do not exist on the real `VLCInput`). It is not part of the autotools build.
+- The REST API and WebSocket server have no TLS (`enable_ssl` only checks that paths are set). Use a reverse proxy.
+- The Thai charset ID `0x0E` and its mapping table are still unverified against ETSI TS 101 756 (see the upstream value re-check).
 
 ## Decisions made
 
