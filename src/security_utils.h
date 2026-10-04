@@ -21,6 +21,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 #include <memory>
 #include <atomic>
 #include <mutex>
@@ -297,7 +298,7 @@ public:
 private:
     PerformanceMetrics current_metrics_;
     std::vector<PerformanceAlert> active_alerts_;
-    std::mutex metrics_mutex_;
+    mutable std::mutex metrics_mutex_;  // guards current_metrics_ and active_alerts_
     std::thread monitoring_thread_;
     std::atomic<bool> monitoring_enabled_{false};
     
@@ -356,9 +357,9 @@ public:
 // Multi-threading safety utilities
 class ThreadSafeQueue {
 private:
-    std::vector<uint8_t> buffer_;
-    size_t head_ = 0;
-    size_t tail_ = 0;
+    // Each push() is stored as one message; pop() returns exactly one message.
+    // size_ and capacity_ count payload bytes only.
+    std::deque<std::vector<uint8_t>> messages_;
     size_t size_ = 0;
     size_t capacity_;
     mutable std::mutex mutex_;

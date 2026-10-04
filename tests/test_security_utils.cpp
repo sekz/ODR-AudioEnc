@@ -341,6 +341,8 @@ TEST_F(MemoryManagerTest, BasicAllocation) {
 }
 
 TEST_F(MemoryManagerTest, MultipleAllocations) {
+    // The manager is a shared singleton, so count relative to the current value
+    const size_t initial_count = manager_->get_allocation_count();
     std::vector<void*> pointers;
     size_t total_size = 0;
     
@@ -355,7 +357,7 @@ TEST_F(MemoryManagerTest, MultipleAllocations) {
     
     // Check total allocated
     EXPECT_GE(manager_->get_total_allocated(), total_size);
-    EXPECT_EQ(manager_->get_allocation_count(), 10);
+    EXPECT_EQ(manager_->get_allocation_count() - initial_count, 10u);
     
     // Deallocate all
     for (void* ptr : pointers) {
@@ -373,7 +375,9 @@ TEST_F(MemoryManagerTest, PeakMemoryTracking) {
     EXPECT_NE(large_allocation, nullptr);
     
     size_t after_large_alloc = manager_->get_peak_allocated();
-    EXPECT_GE(after_large_alloc, initial_peak + 10000);
+    // The peak is a high-water mark: it reaches at least the live total, and never drops
+    EXPECT_GE(after_large_alloc, 10000u);
+    EXPECT_GE(after_large_alloc, initial_peak);
     
     manager_->deallocate(large_allocation);
     
