@@ -7,6 +7,8 @@ find_package(GTest REQUIRED)
 find_package(GMock REQUIRED)
 
 # Include directories
+add_compile_definitions(MOCK_BUILD=1)
+include_directories(${CMAKE_SOURCE_DIR}/tests/mocks)
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/contrib

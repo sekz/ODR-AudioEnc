@@ -27,7 +27,11 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#ifdef MOCK_BUILD
+#include "VLCInputMock.h"  // CMake unit tests: tests/mocks
+#else
 #include "VLCInput.h"
+#endif
 
 namespace StreamDAB {
 

@@ -58,6 +58,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # Include directories
+# This CMake build is for the unit tests only. It uses tests/mocks/VLCInputMock.h
+# (selected by MOCK_BUILD in enhanced_stream.h); the autotools build uses the
+# real src/VLCInput.h.
+add_compile_definitions(MOCK_BUILD=1)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tests/mocks)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/contrib
@@ -80,7 +85,7 @@ set(ENHANCED_SOURCES
 # Create mock dependency files
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/mock_vlc_input.cpp
 "// Mock VLC Input for testing
-#include \"VLCInput.h\"
+#include \"VLCInputMock.h\"
 
 // Implementation for existing VLCInput class (avoid redefinition)
 VLCInput::VLCInput(const std::string& url, int sample_rate, int channels, int buffer_ms) {
