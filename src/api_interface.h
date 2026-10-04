@@ -48,7 +48,10 @@ enum class HttpStatus {
     Unauthorized = 401,
     NotFound = 404,
     MethodNotAllowed = 405,
-    InternalServerError = 500
+    PayloadTooLarge = 413,
+    TooManyRequests = 429,
+    InternalServerError = 500,
+    ServiceUnavailable = 503
 };
 
 // API request/response structures
@@ -58,11 +61,12 @@ struct ApiRequest {
     std::map<std::string, std::string> headers;
     std::map<std::string, std::string> query_params;
     std::string body;
+    std::string client_ip;
     std::chrono::steady_clock::time_point timestamp;
 };
 
 struct ApiResponse {
-    HttpStatus status;
+    HttpStatus status = HttpStatus::OK;
     std::map<std::string, std::string> headers;
     std::string body;
     std::string content_type = "application/json";
@@ -88,6 +92,7 @@ struct WebSocketMessage {
 // Configuration structures
 struct ApiConfig {
     int port = 8007;                    // StreamDAB allocation plan
+    int websocket_port = 0;             // 0 = HTTP port + 1
     std::string bind_address = "0.0.0.0";
     bool enable_ssl = true;
     std::string ssl_cert_path;
@@ -109,8 +114,12 @@ class MessagePackSerializer;
 
 // Main API interface class
 class StreamDABApiInterface {
+    friend class HttpServer;
+    friend class WebSocketServer;
+
 private:
     ApiConfig config_;
+    mutable std::mutex config_mutex_;   // guards config_ (update_config() may run while serving)
     std::unique_ptr<HttpServer> http_server_;
     std::unique_ptr<WebSocketServer> websocket_server_;
     std::unique_ptr<MessagePackSerializer> serializer_;
@@ -137,7 +146,7 @@ private:
     };
     
     std::map<std::string, ConnectedClient> connected_clients_;
-    std::mutex clients_mutex_;
+    mutable std::mutex clients_mutex_;
     std::condition_variable status_update_cv_;
     
     // Rate limiting
@@ -162,7 +171,7 @@ public:
 
 private:
     ApiMetrics metrics_;
-    std::mutex metrics_mutex_;
+    mutable std::mutex metrics_mutex_;
 
 public:
     // Request handlers (made public for lambda access)
@@ -186,6 +195,7 @@ private:
     // Utility methods
     bool authenticate_request(const ApiRequest& request);
     bool check_rate_limit(const std::string& client_ip);
+    bool is_subscribed(const std::string& client_id, WebSocketMessageType type);
     std::string generate_client_id();
     void broadcast_status_update();
     void broadcast_metadata_update(const ThaiMetadata& metadata);
@@ -205,16 +215,21 @@ public:
     void stop();
     bool is_running() const { return running_; }
     
-    // Component integration
+    // Component integration: set the processors before start(); they are not
+    // synchronised with the request threads
     void set_stream_processor(std::shared_ptr<EnhancedStreamProcessor> processor);
     void set_metadata_processor(std::shared_ptr<ThaiMetadataProcessor> processor);
     
     // Configuration management
+    //! Replace the configuration. Authentication, CORS and rate limit apply to the next
+    //! request; the ports only change after a restart.
     void update_config(const ApiConfig& new_config);
-    const ApiConfig& get_config() const { return config_; }
+    ApiConfig get_config() const;
     
     // Metrics and monitoring
     ApiMetrics get_api_metrics() const;
+    //! Called by the HTTP server once per handled request
+    void record_request(HttpStatus status, double response_time_ms);
     void reset_metrics();
     
     // Health check
@@ -232,17 +247,25 @@ public:
 // HTTP server implementation
 class HttpServer {
 private:
-    ApiConfig config_;
+    ApiConfig config_;                    // bind address and port; per-request policy comes from api_
+    StreamDABApiInterface* api_;
     std::atomic<bool> running_{false};
+    std::atomic<int> active_connections_{0};
+    int listen_fd_ = -1;
     std::thread server_thread_;
     
     // Request routing
-    std::map<std::string, std::function<ApiResponse(const ApiRequest&)>> route_handlers_;
+    struct Route {
+        std::string method;               // the only method the route accepts
+        std::function<ApiResponse(const ApiRequest&)> handler;
+    };
+    std::map<std::string, Route> routes_;
     
     void setup_routes(StreamDABApiInterface* api);
+    void handle_connection(int client_socket, const std::string& client_ip);
     void server_loop();
     ApiResponse handle_request(const ApiRequest& request);
-    ApiRequest parse_http_request(const std::string& raw_request);
+    ApiRequest parse_http_request(const std::string& raw_head, const std::string& body);
     std::string format_http_response(const ApiResponse& response);
 
 public:
@@ -262,13 +285,23 @@ private:
     std::atomic<bool> running_{false};
     std::thread server_thread_;
     
-    // Message queue for broadcasting
-    std::queue<WebSocketMessage> message_queue_;
-    std::mutex queue_mutex_;
-    std::condition_variable queue_cv_;
+    int listen_fd_ = -1;
+    
+    struct Client {
+        int fd;
+        std::string id;
+        std::string buffer;               // received, not yet decoded bytes
+        std::string message;              // fragmented message in progress
+        int message_opcode = 0;
+    };
+    std::map<std::string, Client> clients_;
+    std::mutex clients_mutex_;
     
     void server_loop();
-    void process_message_queue();
+    void accept_client();
+    bool process_client_data(Client& client);
+    void drop_client(const std::string& client_id);
+    bool send_frame(int fd, int opcode, const std::string& payload);
     std::string generate_websocket_key_response(const std::string& key);
 
 public:
@@ -302,12 +335,24 @@ public:
     struct ConfigUpdate {
         std::string primary_url;
         std::vector<std::string> fallback_urls;
-        bool enable_normalization;
-        double target_level_db;
-        bool is_valid;
+        bool enable_normalization = true;
+        double target_level_db = -23.0;
+        bool is_valid = false;
     };
     
+    //! Accepts a JSON object (HTTP API) or a MessagePack map (WebSocket). The result is
+    //! only is_valid if primary_url (and every fallback) is a valid stream URL and the
+    //! target level is within -60..0 dB.
     ConfigUpdate deserialize_config_update(const std::string& data);
+
+    //! WebSocket subscription request: {"subscribe": "status"} / {"unsubscribe": "metrics"},
+    //! topics are "status", "metadata", "metrics" and "all".
+    struct Subscription {
+        std::string topic;
+        bool enable = false;
+        bool is_valid = false;
+    };
+    Subscription deserialize_subscription(const std::string& data);
     
     // Generic serialization utilities
     template<typename T>
@@ -318,6 +363,8 @@ public:
 
 private:
     // Internal MessagePack implementation details
+    std::string pack_map_header(size_t count);
+    std::string pack_uint(uint64_t value);
     std::string pack_map(const std::map<std::string, std::string>& data);
     std::string pack_array(const std::vector<std::string>& data);
     std::string pack_string(const std::string& str);
@@ -346,6 +393,8 @@ public:
 
 // Utility functions
 namespace ApiUtils {
+    //! Escape a string for use inside a JSON string literal (UTF-8 passes through)
+    std::string json_escape(const std::string& input);
     // HTTP utilities
     std::string url_encode(const std::string& input);
     std::string url_decode(const std::string& input);

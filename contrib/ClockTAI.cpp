@@ -266,6 +266,7 @@ BulletinState Bulletin::state() const
 }
 
 
+#ifdef HAVE_CURL
 // callback that receives data from cURL
 static size_t fill_bulletin(char *ptr, size_t size, size_t nmemb, void *ctx)
 {
@@ -277,6 +278,7 @@ static size_t fill_bulletin(char *ptr, size_t size, size_t nmemb, void *ctx)
     }
     return len;
 }
+#endif
 
 Bulletin Bulletin::download_from_url(const char* url)
 {

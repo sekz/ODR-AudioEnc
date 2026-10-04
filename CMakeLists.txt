@@ -20,6 +20,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
 
+# libcurl must be located before the .a preference below: the static libcurl.a
+# needs its whole dependency chain (ssl, nghttp2, ldap, ...) at link time.
+find_package(CURL REQUIRED)
+
 # Enable static linking for better compatibility (user suggestion)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -79,6 +83,8 @@ set(ENHANCED_SOURCES
     src/enhanced_stream.cpp
     src/thai_metadata.cpp
     src/api_interface.cpp
+    src/api_serialization.cpp
+    src/api_websocket.cpp
     src/security_utils.cpp
 )
 
@@ -111,6 +117,25 @@ ssize_t VLCInput::read(int16_t* buffer, size_t max_samples) {
     (void)buffer; // Suppress unused parameter warning
     (void)max_samples; // Suppress unused parameter warning
     return 0;
+}
+
+void VLCInput::close() {
+}
+
+std::string VLCInput::get_current_title() const {
+    return std::string();
+}
+
+std::string VLCInput::get_current_artist() const {
+    return std::string();
+}
+
+bool VLCInput::is_connected() const {
+    return false;
+}
+
+int VLCInput::get_buffer_health() const {
+    return 100;
 }
 ")
 
@@ -154,6 +179,7 @@ if(BUILD_TESTS)
 
     target_link_libraries(odr_audioenc_core
         Threads::Threads
+        CURL::libcurl
     )
 
     target_compile_definitions(odr_audioenc_core PRIVATE

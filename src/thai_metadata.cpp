@@ -92,6 +92,26 @@ size_t ThaiDLSProcessor::calculate_display_width(const string& thai_text) {
     return ThaiCharsetConverter::calculate_thai_display_length(thai_text);
 }
 
+bool ThaiDLSProcessor::validate_dls_content(const vector<uint8_t>& dls_data) {
+    // Layout produced by process_thai_text(): [charset id][text bytes...]
+    if (dls_data.size() < 2 or dls_data.size() > max_segment_length_) {
+        return false;
+    }
+    if (dls_data[0] != DAB_THAI_CHARSET) {
+        return false;
+    }
+
+    // Only the DLS control codes line break (0x0A), end of headline (0x0B) and
+    // soft hyphen (0x1F) are allowed below 0x20
+    for (size_t i = 1; i < dls_data.size(); ++i) {
+        const uint8_t byte = dls_data[i];
+        if (byte < 0x20 and byte != 0x0A and byte != 0x0B and byte != 0x1F) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // ThaiCharsetConverter implementation
 map<uint32_t, uint8_t> ThaiCharsetConverter::create_utf8_to_dab_thai_map() {
     map<uint32_t, uint8_t> mapping;
@@ -391,6 +411,26 @@ ThaiMetadataProcessor::ThaiMetadataProcessor() : dls_processor_(MAX_DLS_LENGTH_T
     stats_.last_processed = chrono::steady_clock::now();
 }
 
+bool ThaiMetadataProcessor::validate_metadata(const ThaiMetadata& metadata) {
+    struct Field { const string& text; size_t max_chars; };
+    const Field fields[] = {
+        {metadata.title_utf8, MAX_DLS_LENGTH_THAI},
+        {metadata.artist_utf8, MAX_DLS_LENGTH_THAI},
+        {metadata.album_utf8, MAX_DLS_LENGTH_THAI},
+        {metadata.station_utf8, MAX_LABEL_LENGTH},
+    };
+
+    for (const auto& field : fields) {
+        if (!ThaiUtils::is_valid_utf8_sequence(field.text)) {
+            return false;
+        }
+        if (ThaiUtils::utf8_to_codepoints(field.text).size() > field.max_chars) {
+            return false;
+        }
+    }
+    return true;
+}
+
 ThaiMetadata ThaiMetadataProcessor::process_raw_metadata(const string& raw_title,
                                                         const string& raw_artist,
                                                         const string& raw_album,
@@ -539,7 +579,8 @@ string normalize_whitespace(const string& input) {
     string result;
     bool in_whitespace = false;
     
-    for (char c : input) {
+    // unsigned char: UTF-8 bytes are >= 0x80, and isspace() is undefined for negative values
+    for (unsigned char c : input) {
         if (isspace(c)) {
             if (!in_whitespace) {
                 result.push_back(' ');
@@ -547,7 +588,7 @@ string normalize_whitespace(const string& input) {
             }
         }
         else {
-            result.push_back(c);
+            result.push_back(static_cast<char>(c));
             in_whitespace = false;
         }
     }
@@ -567,10 +608,12 @@ string remove_control_characters(const string& input) {
     string result;
     result.reserve(input.length());
     
-    for (char c : input) {
+    // unsigned char: with a signed char every UTF-8 byte (>= 0x80) would look like a
+    // control character and all Thai text would be removed
+    for (unsigned char c : input) {
         // Remove control characters except tab, newline, carriage return
         if (c >= 32 || c == '\t' || c == '\n' || c == '\r') {
-            result.push_back(c);
+            result.push_back(static_cast<char>(c));
         }
     }
     

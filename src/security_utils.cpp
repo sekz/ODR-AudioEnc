@@ -20,6 +20,8 @@
 #include "security_utils.h"
 #include <regex>
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -71,7 +73,8 @@ bool InputValidator::validate_stream_url(const string& url) const {
     }
     
     // Validate against regex pattern
-    regex url_regex(url_pattern_, regex_constants::icase);
+    // Compiled once: constructing a std::regex on every call is very slow
+    static const regex url_regex(url_pattern_, regex_constants::icase);
     if (!regex_match(url, url_regex)) {
         return false;
     }
@@ -102,7 +105,7 @@ bool InputValidator::validate_hostname(const string& hostname) const {
     }
     
     // Check for IPv4 address
-    regex ipv4_regex(R"(^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$)");
+    static const regex ipv4_regex(R"(^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$)");
     smatch ipv4_match;
     if (regex_match(hostname, ipv4_match, ipv4_regex)) {
         // Validate IPv4 octets
@@ -115,8 +118,15 @@ bool InputValidator::validate_hostname(const string& hostname) const {
         return true;
     }
     
+    // A name whose last label is purely numeric is a malformed IPv4 address, not a hostname
+    const string last_label = hostname.substr(hostname.rfind('.') == string::npos ? 0 : hostname.rfind('.') + 1);
+    if (!last_label.empty() and
+            all_of(last_label.begin(), last_label.end(), [](unsigned char c) { return isdigit(c); })) {
+        return false;
+    }
+
     // Check for valid hostname format
-    regex hostname_regex(R"(^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$)");
+    static const regex hostname_regex(R"(^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$)");
     return regex_match(hostname, hostname_regex);
 }
 
@@ -140,7 +150,7 @@ bool InputValidator::validate_metadata_field(const string& field) const {
     }
     
     // Check for control characters (except tab, newline, carriage return)
-    for (char c : field) {
+    for (unsigned char c : field) {
         if (c < 32 && c != '\t' && c != '\n' && c != '\r') {
             return false;
         }
@@ -183,18 +193,46 @@ bool InputValidator::is_path_traversal_attempt(const string& path) const {
            path.find("\\.") != string::npos;
 }
 
+bool InputValidator::validate_filename(const string& filename) const {
+    if (filename.empty() or filename.size() > 255) {
+        return false;
+    }
+    if (filename == "." or filename == "..") {
+        return false;
+    }
+    return filename.find_first_not_of(safe_filename_chars_) == string::npos;
+}
+
 string InputValidator::sanitize_url(const string& url) const {
     string sanitized = url;
     
-    // Remove any null bytes
-    sanitized.erase(remove(sanitized.begin(), sanitized.end(), '\0'), sanitized.end());
+    // Remove null bytes and other control characters
+    sanitized.erase(remove_if(sanitized.begin(), sanitized.end(),
+                              [](unsigned char c) { return c < 32 or c == 127; }),
+                    sanitized.end());
     
     // Truncate if too long
     if (sanitized.length() > config_.max_url_length) {
         sanitized = sanitized.substr(0, config_.max_url_length);
     }
-    
-    return sanitized;
+
+    // Percent-encode characters that must not appear raw in a URL (markup, quotes,
+    // spaces and non-ASCII bytes), so a hostile URL cannot carry HTML/script.
+    static const string unsafe = " \"<>\\^`{|}";
+    string encoded;
+    encoded.reserve(sanitized.size());
+    for (unsigned char c : sanitized) {
+        if (c >= 128 or unsafe.find(static_cast<char>(c)) != string::npos) {
+            char hex[4];
+            snprintf(hex, sizeof(hex), "%%%02X", c);
+            encoded += hex;
+        }
+        else {
+            encoded += static_cast<char>(c);
+        }
+    }
+
+    return encoded;
 }
 
 string InputValidator::sanitize_metadata(const string& metadata) const {
@@ -202,12 +240,16 @@ string InputValidator::sanitize_metadata(const string& metadata) const {
     
     // Remove control characters (except tab, newline, carriage return)
     sanitized.erase(remove_if(sanitized.begin(), sanitized.end(), 
-                              [](char c) { return c < 32 && c != '\t' && c != '\n' && c != '\r'; }),
+                              [](unsigned char c) { return c < 32 && c != '\t' && c != '\n' && c != '\r'; }),
                     sanitized.end());
     
-    // Truncate if too long
+    // Truncate if too long, without cutting a multi-byte UTF-8 sequence in half
     if (sanitized.length() > config_.max_metadata_length) {
-        sanitized = sanitized.substr(0, config_.max_metadata_length);
+        size_t cut = config_.max_metadata_length;
+        while (cut > 0 and (static_cast<unsigned char>(sanitized[cut]) & 0xC0) == 0x80) {
+            --cut;
+        }
+        sanitized.resize(cut);
     }
     
     return sanitized;
@@ -327,6 +369,44 @@ bool SecureBuffer::write_at(size_t offset, const void* data, size_t length) {
     return true;
 }
 
+bool SecureBuffer::read(void* data, size_t length) {
+    return read_from(0, data, length);
+}
+
+bool SecureBuffer::read_from(size_t offset, void* data, size_t length) {
+    if (!buffer_ or offset > size_ or length > size_ - offset) {
+        return false;
+    }
+
+    memcpy(data, buffer_.get() + offset, length);
+    return true;
+}
+
+void SecureBuffer::clear() {
+    if (buffer_) {
+        memset(buffer_.get(), 0, capacity_);
+    }
+    size_ = 0;
+}
+
+void SecureBuffer::resize(size_t new_capacity) {
+    const size_t total_size = new_capacity + (guard_enabled_ ? GUARD_SIZE : 0);
+    auto new_buffer = make_unique<uint8_t[]>(total_size);
+
+    if (buffer_) {
+        memcpy(new_buffer.get(), buffer_.get(), min(size_, new_capacity));
+    }
+
+    buffer_ = move(new_buffer);
+    capacity_ = new_capacity;
+    size_ = min(size_, new_capacity);
+    write_guard_bytes();
+}
+
+bool SecureBuffer::is_buffer_intact() const {
+    return check_guard_bytes();
+}
+
 void SecureBuffer::validate_buffer_integrity() const {
     if (guard_enabled_ && !check_guard_bytes()) {
         throw SecurityException(SecurityViolationType::BufferOverflow, 
@@ -398,6 +478,53 @@ vector<string> MemoryManager::detect_memory_leaks() const {
     }
     
     return leaks;
+}
+
+size_t MemoryManager::get_active_allocations() const {
+    lock_guard<mutex> lock(allocations_mutex_);
+    return allocations_.size();
+}
+
+MemoryManager::MemoryPool::MemoryPool(size_t block_size, size_t initial_blocks)
+    : block_size_(block_size), pool_size_(initial_blocks) {
+
+    blocks_.reserve(initial_blocks);
+    free_blocks_.reserve(initial_blocks);
+    for (size_t i = 0; i < initial_blocks; ++i) {
+        blocks_.push_back(make_unique<uint8_t[]>(block_size_));
+        free_blocks_.push_back(blocks_.back().get());
+    }
+}
+
+MemoryManager::MemoryPool::~MemoryPool() = default;
+
+void* MemoryManager::MemoryPool::allocate() {
+    lock_guard<mutex> lock(pool_mutex_);
+    if (free_blocks_.empty()) {
+        return nullptr;
+    }
+
+    void* block = free_blocks_.back();
+    free_blocks_.pop_back();
+    return block;
+}
+
+void MemoryManager::MemoryPool::deallocate(void* ptr) {
+    if (!ptr) return;
+
+    lock_guard<mutex> lock(pool_mutex_);
+
+    // Only accept blocks that belong to this pool and are not already free
+    const bool owned = any_of(blocks_.begin(), blocks_.end(),
+            [ptr](const unique_ptr<uint8_t[]>& b) { return b.get() == ptr; });
+    const bool already_free = find(free_blocks_.begin(), free_blocks_.end(), ptr) != free_blocks_.end();
+    if (owned and not already_free) {
+        free_blocks_.push_back(ptr);
+    }
+}
+
+unique_ptr<MemoryManager::MemoryPool> MemoryManager::create_pool(size_t block_size, size_t initial_blocks) {
+    return make_unique<MemoryPool>(block_size, initial_blocks);
 }
 
 MemoryManager& MemoryManager::instance() {
@@ -492,6 +619,68 @@ string AuditLogger::format_log_entry(LogLevel level, EventType event,
     return oss.str();
 }
 
+void AuditLogger::rotate_log_file() {
+    // Called with log_mutex_ held. Shifts <path> -> <path>.1 -> <path>.2 ... and
+    // drops the oldest file.
+    log_file_.close();
+
+    remove((log_file_path_ + "." + to_string(max_files_ - 1)).c_str());
+    for (size_t i = max_files_ - 1; i > 1; --i) {
+        rename((log_file_path_ + "." + to_string(i - 1)).c_str(),
+               (log_file_path_ + "." + to_string(i)).c_str());
+    }
+    if (max_files_ > 1) {
+        rename(log_file_path_.c_str(), (log_file_path_ + ".1").c_str());
+    }
+    else {
+        remove(log_file_path_.c_str());
+    }
+
+    log_file_.open(log_file_path_, ios::app);
+    if (!log_file_) {
+        fprintf(stderr, "Failed to reopen audit log file: %s\n", log_file_path_.c_str());
+        enabled_ = false;
+    }
+}
+
+void AuditLogger::debug(const string& message, const map<string, string>& context) {
+    log(LogLevel::Debug, EventType::SystemStart, message, context);
+}
+
+void AuditLogger::info(const string& message, const map<string, string>& context) {
+    log(LogLevel::Info, EventType::SystemStart, message, context);
+}
+
+void AuditLogger::warning(const string& message, const map<string, string>& context) {
+    log(LogLevel::Warning, EventType::ErrorEvent, message, context);
+}
+
+void AuditLogger::error(const string& message, const map<string, string>& context) {
+    log(LogLevel::Error, EventType::ErrorEvent, message, context);
+}
+
+void AuditLogger::log_stream_connection(const string& url, bool success) {
+    log(success ? LogLevel::Info : LogLevel::Warning, EventType::StreamConnection,
+        success ? "Stream connection established" : "Stream connection failed",
+        {{"url", url}});
+}
+
+void AuditLogger::log_config_change(const string& parameter, const string& old_value,
+                                    const string& new_value) {
+    log(LogLevel::Info, EventType::ConfigurationChange, "Configuration changed",
+        {{"parameter", parameter}, {"old_value", old_value}, {"new_value", new_value}});
+}
+
+void AuditLogger::log_security_violation(const string& violation_type, const string& details) {
+    log(LogLevel::Security, EventType::SecurityViolation, violation_type,
+        {{"details", details}});
+}
+
+void AuditLogger::log_performance_alert(const string& metric, double value, double threshold) {
+    log(LogLevel::Warning, EventType::PerformanceAlert, "Performance threshold exceeded",
+        {{"metric", metric}, {"value", to_string(value)}, {"threshold", to_string(threshold)}});
+}
+
 void AuditLogger::security(const string& message, const map<string, string>& context) {
     log(LogLevel::Security, EventType::SecurityViolation, message, context);
 }
@@ -520,6 +709,51 @@ void PerformanceMonitor::stop_monitoring() {
     if (monitoring_thread_.joinable()) {
         monitoring_thread_.join();
     }
+}
+
+void PerformanceMonitor::update_audio_latency(double latency_ms) {
+    lock_guard<mutex> lock(metrics_mutex_);
+    current_metrics_.audio_processing_latency_ms = latency_ms;
+    current_metrics_.last_updated = steady_clock::now();
+}
+
+void PerformanceMonitor::update_network_latency(double latency_ms) {
+    lock_guard<mutex> lock(metrics_mutex_);
+    current_metrics_.network_latency_ms = latency_ms;
+    current_metrics_.last_updated = steady_clock::now();
+}
+
+void PerformanceMonitor::record_buffer_underrun() {
+    lock_guard<mutex> lock(metrics_mutex_);
+    current_metrics_.buffer_underruns++;
+    current_metrics_.last_updated = steady_clock::now();
+}
+
+void PerformanceMonitor::record_buffer_overrun() {
+    lock_guard<mutex> lock(metrics_mutex_);
+    current_metrics_.buffer_overruns++;
+    current_metrics_.last_updated = steady_clock::now();
+}
+
+void PerformanceMonitor::update_throughput(double mbps) {
+    lock_guard<mutex> lock(metrics_mutex_);
+    current_metrics_.throughput_mbps = mbps;
+    current_metrics_.last_updated = steady_clock::now();
+}
+
+PerformanceMonitor::PerformanceMetrics PerformanceMonitor::get_current_metrics() const {
+    lock_guard<mutex> lock(metrics_mutex_);
+    return current_metrics_;
+}
+
+vector<PerformanceMonitor::PerformanceAlert> PerformanceMonitor::get_active_alerts() const {
+    lock_guard<mutex> lock(metrics_mutex_);
+    return active_alerts_;
+}
+
+void PerformanceMonitor::clear_alerts() {
+    lock_guard<mutex> lock(metrics_mutex_);
+    active_alerts_.clear();
 }
 
 void PerformanceMonitor::monitoring_loop() {
@@ -590,12 +824,85 @@ void PerformanceMonitor::check_performance_thresholds() {
     }
     
     // Add new alerts
+    lock_guard<mutex> lock(metrics_mutex_);
     for (const auto& alert : new_alerts) {
         active_alerts_.push_back(alert);
         
         // Log performance alert
         // This would integrate with AuditLogger
     }
+}
+
+// ThreadSafeQueue implementation
+ThreadSafeQueue::ThreadSafeQueue(size_t capacity) : capacity_(capacity) {}
+
+bool ThreadSafeQueue::push(const void* data, size_t length, milliseconds timeout) {
+    if (!data and length > 0) {
+        return false;
+    }
+    if (length > capacity_) {
+        return false; // can never fit
+    }
+
+    unique_lock<mutex> lock(mutex_);
+    if (!not_full_.wait_for(lock, timeout, [&] { return capacity_ - size_ >= length; })) {
+        return false;
+    }
+
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+    messages_.emplace_back(bytes, bytes + length);
+    size_ += length;
+    total_pushed_ += length;
+    peak_size_ = max(peak_size_, size_);
+
+    not_empty_.notify_one();
+    return true;
+}
+
+bool ThreadSafeQueue::pop(void* data, size_t max_length, size_t& actual_length, milliseconds timeout) {
+    unique_lock<mutex> lock(mutex_);
+    if (!not_empty_.wait_for(lock, timeout, [&] { return !messages_.empty(); })) {
+        return false;
+    }
+
+    // A message that does not fit is left in the queue rather than truncated
+    const vector<uint8_t>& front = messages_.front();
+    if (front.size() > max_length) {
+        return false;
+    }
+
+    actual_length = front.size();
+    if (actual_length > 0) {
+        memcpy(data, front.data(), actual_length);
+    }
+    size_ -= actual_length;
+    total_popped_ += actual_length;
+    messages_.pop_front();
+
+    not_full_.notify_one();
+    return true;
+}
+
+size_t ThreadSafeQueue::size() const {
+    lock_guard<mutex> lock(mutex_);
+    return size_;
+}
+
+bool ThreadSafeQueue::empty() const {
+    lock_guard<mutex> lock(mutex_);
+    return messages_.empty();
+}
+
+bool ThreadSafeQueue::full() const {
+    lock_guard<mutex> lock(mutex_);
+    return size_ >= capacity_;
+}
+
+void ThreadSafeQueue::clear() {
+    lock_guard<mutex> lock(mutex_);
+    messages_.clear();
+    size_ = 0;
+    not_full_.notify_all();
 }
 
 // SIMD processor implementation
@@ -627,44 +934,48 @@ void SIMDProcessor::detect_cpu_capabilities() {
     cpu_capabilities_detected_ = true;
 }
 
+static inline int16_t scale_sample(int16_t sample, float gain) {
+    const float scaled = static_cast<float>(sample) * gain;
+    if (scaled >= 32767.0f) return 32767;
+    if (scaled <= -32768.0f) return -32768;
+    return static_cast<int16_t>(scaled);
+}
+
 void SIMDProcessor::normalize_samples_simd(int16_t* samples, size_t count, float gain) {
     detect_cpu_capabilities();
-    
+
+    size_t done = 0;
+
 #ifdef __x86_64__
     if (has_sse2_ && count >= 8) {
-        __m128 gain_vec = _mm_set1_ps(gain);
-        size_t simd_count = count & ~7; // Process in chunks of 8
-        
-        for (size_t i = 0; i < simd_count; i += 8) {
-            // Load 8 int16_t samples
-            __m128i samples_i16 = _mm_loadu_si128(reinterpret_cast<__m128i*>(&samples[i]));
-            
-            // Convert to float (lower 4 samples)
-            __m128i samples_low = _mm_unpacklo_epi16(samples_i16, _mm_setzero_si128());
-            __m128 samples_f_low = _mm_cvtepi32_ps(_mm_unpacklo_epi16(samples_low, _mm_setzero_si128()));
-            
-            // Apply gain
-            samples_f_low = _mm_mul_ps(samples_f_low, gain_vec);
-            
-            // Convert back to int16_t and store
-            __m128i result_low = _mm_cvtps_epi32(samples_f_low);
-            result_low = _mm_packs_epi32(result_low, result_low);
-            
-            _mm_storel_epi64(reinterpret_cast<__m128i*>(&samples[i]), result_low);
+        const __m128 gain_vec = _mm_set1_ps(gain);
+        const size_t simd_count = count & ~size_t(7); // Process in chunks of 8
+
+        for (; done < simd_count; done += 8) {
+            const __m128i s16 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&samples[done]));
+
+            // Sign-extend int16 -> int32 (SSE2): duplicate into both halves, then arithmetic shift
+            const __m128i lo32 = _mm_srai_epi32(_mm_unpacklo_epi16(s16, s16), 16);
+            const __m128i hi32 = _mm_srai_epi32(_mm_unpackhi_epi16(s16, s16), 16);
+
+            const __m128 lo_f = _mm_mul_ps(_mm_cvtepi32_ps(lo32), gain_vec);
+            const __m128 hi_f = _mm_mul_ps(_mm_cvtepi32_ps(hi32), gain_vec);
+
+            // _mm_packs_epi32 saturates to the int16 range
+            const __m128i result = _mm_packs_epi32(_mm_cvttps_epi32(lo_f), _mm_cvttps_epi32(hi_f));
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&samples[done]), result);
         }
-        
-        // Process remaining samples
-        for (size_t i = simd_count; i < count; ++i) {
-            samples[i] = static_cast<int16_t>(samples[i] * gain);
-        }
-        return;
     }
 #endif
 
-    // Fallback to scalar implementation
-    for (size_t i = 0; i < count; ++i) {
-        samples[i] = static_cast<int16_t>(samples[i] * gain);
+    // Remaining samples (or everything, without SSE2)
+    for (; done < count; ++done) {
+        samples[done] = scale_sample(samples[done], gain);
     }
+}
+
+void SIMDProcessor::apply_gain_simd(int16_t* samples, size_t count, float gain) {
+    normalize_samples_simd(samples, count, gain);
 }
 
 double SIMDProcessor::calculate_rms_simd(const int16_t* samples, size_t count) {

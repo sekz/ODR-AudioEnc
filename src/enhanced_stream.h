@@ -78,8 +78,10 @@ private:
     std::atomic<int> current_fallback_index_{-1};
     
     std::thread monitor_thread_;
-    std::mutex metrics_mutex_;
+    // Guards config_, metrics_ and total_samples_ (mutable: taken in const getters)
+    mutable std::mutex metrics_mutex_;
     std::condition_variable reconnect_cv_;
+    size_t total_samples_ = 0;
     
     // Audio processing buffers
     std::vector<int16_t> audio_buffer_;
@@ -102,39 +104,41 @@ private:
 
 public:
     EnhancedStreamProcessor(const StreamConfig& config);
-    ~EnhancedStreamProcessor();
+    virtual ~EnhancedStreamProcessor();
     
     // Core functionality
     bool initialize();
     bool start_stream();
     void stop_stream();
-    bool is_running() const { return running_; }
-    bool is_connected() const { return connected_; }
+    virtual bool is_running() const { return running_; }
+    virtual bool is_connected() const { return connected_; }
     
     // Audio data retrieval
     ssize_t get_samples(std::vector<int16_t>& samples, size_t max_samples);
     
-    // Configuration management
-    void update_config(const StreamConfig& config);
-    const StreamConfig& get_config() const { return config_; }
+    // Configuration management (virtual so that the API layer can be unit-tested with a mock)
+    //! Replace the configuration. Returns false (and keeps the old one) if the new one is invalid.
+    virtual bool update_config(const StreamConfig& config);
+    virtual StreamConfig get_config() const;
     
     // Quality monitoring
-    StreamQualityMetrics get_quality_metrics();
+    virtual StreamQualityMetrics get_quality_metrics() const;
     void reset_metrics();
     
     // Stream management
-    bool force_reconnect();
+    virtual bool force_reconnect();
+    //! Select the next URL (primary -> fallbacks in order -> primary ...)
     void cycle_fallback();
-    std::string get_current_url() const;
+    virtual std::string get_current_url() const;
     
     // Metadata extraction
-    std::string get_current_title() const;
-    std::string get_current_artist() const;
+    virtual std::string get_current_title() const;
+    virtual std::string get_current_artist() const;
     std::string get_stream_info() const;
     
     // Health checks
-    bool is_healthy() const;
-    std::vector<std::string> get_health_issues() const;
+    virtual bool is_healthy() const;
+    virtual std::vector<std::string> get_health_issues() const;
     
     // Statistics for monitoring
     struct StreamStats {

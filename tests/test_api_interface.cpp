@@ -29,6 +29,8 @@ using namespace std::chrono;
 // Mock classes for testing
 class MockEnhancedStreamProcessor : public EnhancedStreamProcessor {
 public:
+    MockEnhancedStreamProcessor() : EnhancedStreamProcessor(StreamConfig{}) {}
+
     MOCK_METHOD(bool, is_connected, (), (const, override));
     MOCK_METHOD(bool, is_running, (), (const, override));
     MOCK_METHOD(bool, is_healthy, (), (const, override));
@@ -120,15 +122,30 @@ protected:
         
         if (method == "POST") {
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            if (!body.empty()) {
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-            }
+            // Always send a body, even an empty one, so that Content-Length is set
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(body.size()));
         }
+        else if (method != "GET") {
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
+        }
+
+        // Request headers
+        struct curl_slist* header_list = nullptr;
+        for (const auto& header : headers) {
+            header_list = curl_slist_append(header_list, (header.first + ": " + header.second).c_str());
+        }
+        if (header_list) {
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+        }
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
         
         // Set up response capture
         string response_data;
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, 
-            [](void* contents, size_t size, size_t nmemb, void* userp) -> size_t {
+        // The unary + converts the lambda to a plain function pointer: curl_easy_setopt() is a
+        // C variadic function and would otherwise receive the closure object itself
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+            +[](void* contents, size_t size, size_t nmemb, void* userp) -> size_t {
                 size_t realsize = size * nmemb;
                 static_cast<string*>(userp)->append(static_cast<char*>(contents), realsize);
                 return realsize;
@@ -141,9 +158,11 @@ protected:
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.status_code);
             response.body = response_data;
         } else {
+            fprintf(stderr, "HTTP request failed: %s\n", curl_easy_strerror(res));
             response.status_code = -1;
         }
         
+        curl_slist_free_all(header_list);
         curl_easy_cleanup(curl);
         return response;
     }
