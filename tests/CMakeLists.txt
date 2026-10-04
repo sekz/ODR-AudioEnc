@@ -34,6 +34,8 @@ set(PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/src/thai_metadata.cpp
     ${CMAKE_SOURCE_DIR}/src/enhanced_stream.cpp
     ${CMAKE_SOURCE_DIR}/src/api_interface.cpp
+    ${CMAKE_SOURCE_DIR}/src/api_serialization.cpp
+    ${CMAKE_SOURCE_DIR}/src/api_websocket.cpp
     ${CMAKE_SOURCE_DIR}/src/security_utils.cpp
     ${CMAKE_SOURCE_DIR}/src/utils.cpp
     ${CMAKE_SOURCE_DIR}/contrib/Log.cpp
